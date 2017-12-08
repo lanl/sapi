@@ -189,9 +189,9 @@ func (p *QuantumSolverParameters) ToC() *C.sapi_SolverParameters {
 func (s *Solver) NewSolverParameters() SolverParameters {
 	switch {
 	case strings.HasSuffix(s.Name, "-sw_optimize"):
-		return NewSwSampleSolverParameters()
-	case strings.HasSuffix(s.Name, "-sw_sample"):
 		return NewSwOptimizeSolverParameters()
+	case strings.HasSuffix(s.Name, "-sw_sample"):
+		return NewSwSampleSolverParameters()
 	case strings.HasSuffix(s.Name, "-heuristic"):
 		return NewSwHeuristicSolverParameters()
 	default:
