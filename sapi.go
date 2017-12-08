@@ -1,4 +1,4 @@
-// The sapi package provides a Go interface to D-Wave's SAPI library.
+// Package sapi provides a Go interface to D-Wave's SAPI library.
 package sapi
 
 // #cgo LDFLAGS: -ldwave_sapi
