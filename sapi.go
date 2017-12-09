@@ -19,3 +19,8 @@ func init() {
 		panic("Failed to initialize SAPI")
 	}
 }
+
+// Version returns the SAPI version number as a string.
+func Version() string {
+	return C.GoString(C.sapi_version())
+}

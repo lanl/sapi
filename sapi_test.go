@@ -11,6 +11,16 @@ import (
 // localSolver represents the name of a local solver to connect to.
 const localSolverName = "c4-sw_optimize"
 
+// TestVersion tests that we can query the SAPI version string without
+// crashing.
+func TestVersion(t *testing.T) {
+	v := sapi.Version()
+	if v == "" {
+		t.Fatal("Expected a non-empty SAPI version string")
+	}
+	t.Logf("Testing against SAPI version %s", v)
+}
+
 // getRemoteParams extracts from the environment the parameters needed for a
 // remote connection.  If one of the URL, token, or solver name is not set, the
 // function skips the current test.
