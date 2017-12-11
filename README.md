@@ -1,6 +1,9 @@
 sapi: Go bindings for D-Wave's SAPI library
 ===========================================
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/lanl/sapi)](https://goreportcard.com/report/github.com/lanl/sapi)
+[![GoDoc](https://godoc.org/github.com/lanl/sapi?status.svg)](https://godoc.org/github.com/lanl/sapi)
+
 Description
 -----------
 
