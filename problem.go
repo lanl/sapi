@@ -46,3 +46,29 @@ func (p Problem) toC() *C.sapi_Problem {
 	})
 	return cProblem
 }
+
+// problemFromC converts a C sapi_Problem to a Go Problem.
+func problemFromC(csp *C.sapi_Problem) Problem {
+	npe := int(csp.len)
+	prob := make(Problem, npe)
+	pePtr := (*[1 << 30]C.sapi_ProblemEntry)(unsafe.Pointer(csp.elements))[:npe:npe]
+	for i, pe := range pePtr {
+		prob[i] = ProblemEntry{
+			I:     int(pe.i),
+			J:     int(pe.j),
+			Value: float64(pe.value),
+		}
+	}
+	return prob
+}
+
+// ChimeraAdjacency constructs the adjacency matrix for an arbitrary Chimera
+// graph.
+func ChimeraAdjacency(m, n, l int) (Problem, error) {
+	var cProb *C.sapi_Problem
+	if ret := C.sapi_getChimeraAdjacency(C.int(m), C.int(n), C.int(l), &cProb); ret != C.SAPI_OK {
+		return nil, newErrorf(ret, "Failed to construct a {%d, %d, %d} Chimera graph", m, n, l)
+	}
+	defer C.sapi_freeProblem(cProb)
+	return problemFromC(cProb), nil
+}

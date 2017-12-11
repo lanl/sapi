@@ -110,6 +110,17 @@ func (s *Solver) GetProperties() *SolverProperties {
 	return propObj
 }
 
+// HardwareAdjacency returns the adjacency matrix for the solver's underlying
+// topology.
+func (s *Solver) HardwareAdjacency() (Problem, error) {
+	var cProb *C.sapi_Problem
+	if ret := C.sapi_getHardwareAdjacency(s.solver, &cProb); ret != C.SAPI_OK {
+		return nil, newErrorf(ret, "Failed to query the %s solver's topology", s.Name)
+	}
+	defer C.sapi_freeProblem(cProb)
+	return problemFromC(cProb), nil
+}
+
 // convertIsingResultToGo is a helper function for SolveIsing and SolveQubo
 // that converts the returned C.sapi_IsingResult structure to a Go-friendly
 // format.

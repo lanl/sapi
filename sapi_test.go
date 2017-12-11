@@ -22,6 +22,40 @@ func TestVersion(t *testing.T) {
 	t.Logf("Testing against SAPI version %s", v)
 }
 
+// TestChimeraAdjacency tests that we can generate an adjacency list for a
+// Chimera.
+func TestChimeraAdjacency(t *testing.T) {
+	// Generate an adjacency list.
+	const (
+		M = 3 // Vertical
+		N = 4 // Horizontal
+		L = 5 // Intra-cell
+	)
+	adj, err := sapi.ChimeraAdjacency(M, N, L)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove one of each pair of symmetric connections.
+	oldAdj := adj
+	adj = make(sapi.Problem, 0, len(oldAdj)/2)
+	for _, a := range oldAdj {
+		if a.I < a.J {
+			adj = append(adj, a)
+		}
+	}
+
+	// Rather than check every connection we merely ensure that the list
+	// contains the correct number of connections.
+	expected := M*N*L*L + // Intra-cell
+		L*(M-1)*N + // Up and down inter-cell
+		L*M*(N-1) // Left and right inter-cell
+	if len(adj) != expected {
+		t.Logf("Chimera {%d, %d, %d} connections returned: %v", M, N, L, adj)
+		t.Fatalf("Expected %d connections but saw %d", expected, len(adj))
+	}
+}
+
 // getRemoteParams extracts from the environment the parameters needed for a
 // remote connection.  If one of the URL, token, or solver name is not set, the
 // function skips the current test.
@@ -88,7 +122,7 @@ func TestRemoteSolversExist(t *testing.T) {
 	}
 	t.Logf("Available solvers: \"%s\"", strings.Join(sList, `", "`))
 	if len(sList) < 1 {
-		t.Fatal("No solvers found on connection %s", url)
+		t.Fatalf("No solvers found on connection %s", url)
 	}
 }
 
@@ -98,6 +132,22 @@ func TestLocalSolver(t *testing.T) {
 	_, err := conn.GetSolver(localSolverName)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestLocalHardwareAdjacency ensures we can query a local solver's topology.
+func TestLocalHardwareAdjacency(t *testing.T) {
+	conn := sapi.LocalConnection()
+	solver, err := conn.GetSolver(localSolverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adj, err := solver.HardwareAdjacency()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(adj) == 0 {
+		t.Fatalf("Received an empty adjacency graph for solver %s", localSolverName)
 	}
 }
 
@@ -114,8 +164,28 @@ func TestRemoteSolver(t *testing.T) {
 	}
 }
 
-// findFourCycle finds a set of four distinct qubits with connections (0, 1), (1,
-// 2), (2, 3), and (3, 0).
+// TestRemoteHardwareAdjacency ensures we can query a remote solver's topology.
+func TestRemoteHardwareAdjacency(t *testing.T) {
+	url, token, proxy, solverName := getRemoteParams(t)
+	conn, err := sapi.RemoteConnection(url, token, proxy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	solver, err := conn.GetSolver(solverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adj, err := solver.HardwareAdjacency()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(adj) == 0 {
+		t.Fatalf("Received an empty adjacency graph for solver %s", localSolverName)
+	}
+}
+
+// findFourCycle finds a set of four distinct qubits with connections (0, 1),
+// (1, 2), (2, 3), and (3, 0).
 func findFourCycle(s *sapi.Solver) []int {
 	// Construct an adjacency list from the list of couplers.
 	props := s.GetProperties()
