@@ -110,3 +110,67 @@ func (s *Solver) GetProperties() *SolverProperties {
 	}
 	return propObj
 }
+
+// convertIsingResultToGo is a helper function for SolveIsing and SolveQubo
+// that converts the returned C.sapi_IsingResult structure to a Go-friendly
+// format.
+func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
+	// Convert the resulting solutions from C to Go.
+	ns := int(result.num_solutions)
+	sl := int(result.solution_len)
+	sPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.solutions))[:ns*sl : ns*sl]
+	solns := make([][]int8, ns)
+	for i := range solns {
+		solns[i] = make([]int8, sl)
+		for j := range solns[i] {
+			solns[i][j] = int8(sPtr[i*sl+j])
+		}
+	}
+
+	// Convert the resulting energies from C to Go.
+	ePtr := (*[1 << 30]C.double)(unsafe.Pointer(result.energies))[:ns:ns]
+	energies := make([]float64, ns)
+	for i, v := range ePtr {
+		energies[i] = float64(v)
+	}
+
+	// Convert the resulting tallies from C to Go.
+	oPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.num_occurrences))[:ns:ns]
+	occurs := make([]int, ns)
+	for i, v := range oPtr {
+		occurs[i] = int(v)
+	}
+
+	// Free the C data and return the Go result.
+	C.sapi_freeIsingResult(result)
+	ir := IsingResult{
+		Solutions:   solns,
+		Energies:    energies,
+		Occurrences: occurs,
+	}
+	return ir, nil
+}
+
+// SolveIsing solves an Ising-model problem.
+func (s *Solver) SolveIsing(p Problem, sp SolverParameters) (IsingResult, error) {
+	prob := p.toC()
+	params := sp.ToC()
+	var result *C.sapi_IsingResult
+	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
+	if C.sapi_solveIsing(s.solver, prob, params, &result, &cErr[0]) != C.SAPI_OK {
+		return IsingResult{}, fmt.Errorf("%s", C.GoString(&cErr[0]))
+	}
+	return convertIsingResultToGo(result)
+}
+
+// SolveQubo solves a QUBO problem.
+func (s *Solver) SolveQubo(p Problem, sp SolverParameters) (IsingResult, error) {
+	prob := p.toC()
+	params := sp.ToC()
+	var result *C.sapi_IsingResult
+	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
+	if C.sapi_solveQubo(s.solver, prob, params, &result, &cErr[0]) != C.SAPI_OK {
+		return IsingResult{}, fmt.Errorf("%s", C.GoString(&cErr[0]))
+	}
+	return convertIsingResultToGo(result)
+}

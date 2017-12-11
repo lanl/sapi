@@ -10,7 +10,6 @@ package sapi
 import "C"
 
 import (
-	"fmt"
 	"strings"
 	"unsafe"
 )
@@ -204,51 +203,4 @@ type IsingResult struct {
 	Solutions   [][]int8  // Solutions found (±1 or 3 for "unused")
 	Energies    []float64 // Energy of each solution
 	Occurrences []int     // Tally of occurrences of each solution
-}
-
-// SolveIsing solves an Ising-model problem.
-func (s *Solver) SolveIsing(p Problem, sp SolverParameters) (IsingResult, error) {
-	// Submit the problem to the solver.
-	prob := p.toC()
-	params := sp.ToC()
-	var result *C.sapi_IsingResult
-	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
-	if C.sapi_solveIsing(s.solver, prob, params, &result, &cErr[0]) != C.SAPI_OK {
-		return IsingResult{}, fmt.Errorf("%s", C.GoString(&cErr[0]))
-	}
-
-	// Convert the resulting solutions from C to Go.
-	ns := int(result.num_solutions)
-	sl := int(result.solution_len)
-	sPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.solutions))[:ns*sl : ns*sl]
-	solns := make([][]int8, ns)
-	for i := range solns {
-		solns[i] = make([]int8, sl)
-		for j := range solns[i] {
-			solns[i][j] = int8(sPtr[i*sl+j])
-		}
-	}
-
-	// Convert the resulting energies from C to Go.
-	ePtr := (*[1 << 30]C.double)(unsafe.Pointer(result.energies))[:ns:ns]
-	energies := make([]float64, ns)
-	for i, v := range ePtr {
-		energies[i] = float64(v)
-	}
-
-	// Convert the resulting tallies from C to Go.
-	oPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.num_occurrences))[:ns:ns]
-	occurs := make([]int, ns)
-	for i, v := range oPtr {
-		occurs[i] = int(v)
-	}
-
-	// Free the C data and return the Go result.
-	C.sapi_freeIsingResult(result)
-	ir := IsingResult{
-		Solutions:   solns,
-		Energies:    energies,
-		Occurrences: occurs,
-	}
-	return ir, nil
 }

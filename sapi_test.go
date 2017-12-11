@@ -127,7 +127,8 @@ func findFourCycle(s *sapi.Solver) []int {
 }
 
 // Solve for all valid rows in an AND truth table.
-func testAND(t *testing.T, solver *sapi.Solver) {
+func testAND(t *testing.T, ising bool, solver *sapi.Solver,
+	solverFunc func(sapi.Problem, sapi.SolverParameters) (sapi.IsingResult, error)) {
 	// Find a set of qubits we can use.
 	square := findFourCycle(solver)
 	if square == nil {
@@ -137,28 +138,44 @@ func testAND(t *testing.T, solver *sapi.Solver) {
 
 	// Construct a simple problem (an AND truth table).
 	prob := make(sapi.Problem, 8)
-	prob[0] = sapi.ProblemEntry{I: q0, J: q0, Value: -0.125}
-	prob[1] = sapi.ProblemEntry{I: q1, J: q1, Value: -0.125}
-	prob[2] = sapi.ProblemEntry{I: q2, J: q2, Value: -0.25}
-	prob[3] = sapi.ProblemEntry{I: q3, J: q3, Value: 0.5}
-	prob[4] = sapi.ProblemEntry{I: q0, J: q1, Value: -1.0}
-	prob[5] = sapi.ProblemEntry{I: q1, J: q2, Value: 0.25}
-	prob[6] = sapi.ProblemEntry{I: q2, J: q3, Value: -0.5}
-	prob[7] = sapi.ProblemEntry{I: q3, J: q0, Value: -0.5}
+	if ising {
+		prob[0] = sapi.ProblemEntry{I: q0, J: q0, Value: -0.125}
+		prob[1] = sapi.ProblemEntry{I: q1, J: q1, Value: -0.125}
+		prob[2] = sapi.ProblemEntry{I: q2, J: q2, Value: -0.25}
+		prob[3] = sapi.ProblemEntry{I: q3, J: q3, Value: 0.5}
+		prob[4] = sapi.ProblemEntry{I: q0, J: q1, Value: -1.0}
+		prob[5] = sapi.ProblemEntry{I: q1, J: q2, Value: 0.25}
+		prob[6] = sapi.ProblemEntry{I: q2, J: q3, Value: -0.5}
+		prob[7] = sapi.ProblemEntry{I: q3, J: q0, Value: -0.5}
+	} else {
+		prob[0] = sapi.ProblemEntry{I: q0, J: q0, Value: 2.75}
+		prob[1] = sapi.ProblemEntry{I: q1, J: q1, Value: 1.25}
+		prob[2] = sapi.ProblemEntry{I: q2, J: q2, Value: 0.0}
+		prob[3] = sapi.ProblemEntry{I: q3, J: q3, Value: 3.0}
+		prob[4] = sapi.ProblemEntry{I: q0, J: q1, Value: -4.0}
+		prob[5] = sapi.ProblemEntry{I: q1, J: q2, Value: 1.0}
+		prob[6] = sapi.ProblemEntry{I: q2, J: q3, Value: -2.0}
+		prob[7] = sapi.ProblemEntry{I: q3, J: q0, Value: -2.0}
+	}
 
 	// Set the solver NumReads parameter to a large value.
 	sp := solver.NewSolverParameters()
 	sp.SetNumReads(1000)
 
 	// Solve the problem.
-	ir, err := solver.SolveIsing(prob, sp)
+	ir, err := solverFunc(prob, sp)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Ensure that each solution is either correct or sits at high enough
 	// energy that we know it's incorrect.
-	const correctEnergy = -1.75
+	var correctEnergy float64
+	if ising {
+		correctEnergy = -1.75
+	} else {
+		correctEnergy = 0.0
+	}
 	s2b := map[int8]bool{-1: false, +1: true}
 	for i, soln := range ir.Solutions {
 		// Extract the AND inputs and output.
@@ -192,7 +209,7 @@ func TestLocalSolveIsing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testAND(t, solver)
+	testAND(t, true, solver, solver.SolveIsing)
 }
 
 // TestLocalSolveIsing ensures we can solve an Ising-model problem on a remote
@@ -207,5 +224,29 @@ func TestRemoteSolveIsing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testAND(t, solver)
+	testAND(t, true, solver, solver.SolveIsing)
+}
+
+// TestLocalSolveQubo ensures we can solve an QUBO problem on a local solver.
+func TestLocalSolveQubo(t *testing.T) {
+	conn := sapi.LocalConnection()
+	solver, err := conn.GetSolver(localSolverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testAND(t, false, solver, solver.SolveQubo)
+}
+
+// TestLocalSolveQubo ensures we can solve a QUBO problem on a remote solver.
+func TestRemoteSolveQubo(t *testing.T) {
+	url, token, proxy, solverName := getRemoteParams(t)
+	conn, err := sapi.RemoteConnection(url, token, proxy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	solver, err := conn.GetSolver(solverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testAND(t, false, solver, solver.SolveQubo)
 }
