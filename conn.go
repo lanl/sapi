@@ -67,3 +67,20 @@ func RemoteConnection(url, token, proxy string) (*Connection, error) {
 	})
 	return connObj, nil
 }
+
+// Solvers returns a list of all solvers available on the current connection.
+func (c *Connection) Solvers() ([]string, error) {
+	cList := C.sapi_listSolvers(c.conn)
+	if cList == nil {
+		return nil, fmt.Errorf("Failed to retrieve the solver list")
+	}
+	list := make([]string, 0, 2)
+	lPtr := (*[1 << 30]*C.char)(unsafe.Pointer(cList))
+	for _, cp := range lPtr {
+		if cp == nil {
+			break
+		}
+		list = append(list, C.GoString(cp))
+	}
+	return list, nil
+}

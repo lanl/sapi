@@ -5,6 +5,7 @@ package sapi_test
 import (
 	"github.com/lanl/sapi"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -54,6 +55,40 @@ func TestRemoteConnection(t *testing.T) {
 	_, err := sapi.RemoteConnection(url, token, proxy)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestLocalSolversExist ensures we have at least one local solver.
+func TestLocalSolversExist(t *testing.T) {
+	conn := sapi.LocalConnection()
+	_, err := conn.GetSolver(localSolverName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sList, err := conn.Solvers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Available solvers: \"%s\"", strings.Join(sList, `", "`))
+	if len(sList) < 1 {
+		t.Fatal("No solvers found")
+	}
+}
+
+// TestRemoteSolversExist ensures we have at least one local solver.
+func TestRemoteSolversExist(t *testing.T) {
+	url, token, proxy, _ := getRemoteParams(t)
+	conn, err := sapi.RemoteConnection(url, token, proxy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sList, err := conn.Solvers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Available solvers: \"%s\"", strings.Join(sList, `", "`))
+	if len(sList) < 1 {
+		t.Fatal("No solvers found on connection %s", url)
 	}
 }
 
