@@ -10,7 +10,6 @@ package sapi
 import "C"
 
 import (
-	"fmt"
 	"runtime"
 	"unsafe"
 )
@@ -49,7 +48,7 @@ func RemoteConnection(url, token, proxy string) (*Connection, error) {
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
 	ret := C.sapi_remoteConnection(cURL, cToken, cProxy, &conn, &cErr[0])
 	if ret != C.SAPI_OK {
-		return nil, fmt.Errorf("%s", C.GoString(&cErr[0]))
+		return nil, newErrorf(ret, "%s", C.GoString(&cErr[0]))
 	}
 	connObj := &Connection{
 		conn:  conn,
@@ -72,7 +71,7 @@ func RemoteConnection(url, token, proxy string) (*Connection, error) {
 func (c *Connection) Solvers() ([]string, error) {
 	cList := C.sapi_listSolvers(c.conn)
 	if cList == nil {
-		return nil, fmt.Errorf("Failed to retrieve the solver list")
+		return nil, newErrorf(C.SAPI_ERR_INVALID_PARAMETER, "Failed to retrieve the solver list")
 	}
 	list := make([]string, 0, 2)
 	lPtr := (*[1 << 30]*C.char)(unsafe.Pointer(cList))

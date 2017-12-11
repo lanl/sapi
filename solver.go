@@ -10,7 +10,6 @@ package sapi
 import "C"
 
 import (
-	"fmt"
 	"runtime"
 	"unsafe"
 )
@@ -29,7 +28,7 @@ func (c *Connection) GetSolver(name string) (*Solver, error) {
 	defer C.free(unsafe.Pointer(cName))
 	s := C.sapi_getSolver(c.conn, cName)
 	if s == nil {
-		return nil, fmt.Errorf("Solver %q not found on connection %s", name, c.URL)
+		return nil, newErrorf(C.SAPI_ERR_INVALID_PARAMETER, "Solver %q not found on connection %s", name, c.URL)
 	}
 	solverObj := &Solver{
 		solver: s,
@@ -157,8 +156,8 @@ func (s *Solver) SolveIsing(p Problem, sp SolverParameters) (IsingResult, error)
 	params := sp.ToC()
 	var result *C.sapi_IsingResult
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
-	if C.sapi_solveIsing(s.solver, prob, params, &result, &cErr[0]) != C.SAPI_OK {
-		return IsingResult{}, fmt.Errorf("%s", C.GoString(&cErr[0]))
+	if ret := C.sapi_solveIsing(s.solver, prob, params, &result, &cErr[0]); ret != C.SAPI_OK {
+		return IsingResult{}, newErrorf(ret, "%s", C.GoString(&cErr[0]))
 	}
 	return convertIsingResultToGo(result)
 }
@@ -169,8 +168,8 @@ func (s *Solver) SolveQubo(p Problem, sp SolverParameters) (IsingResult, error) 
 	params := sp.ToC()
 	var result *C.sapi_IsingResult
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
-	if C.sapi_solveQubo(s.solver, prob, params, &result, &cErr[0]) != C.SAPI_OK {
-		return IsingResult{}, fmt.Errorf("%s", C.GoString(&cErr[0]))
+	if ret := C.sapi_solveQubo(s.solver, prob, params, &result, &cErr[0]); ret != C.SAPI_OK {
+		return IsingResult{}, newErrorf(ret, "%s", C.GoString(&cErr[0]))
 	}
 	return convertIsingResultToGo(result)
 }

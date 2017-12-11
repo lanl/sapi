@@ -13,6 +13,10 @@ package sapi
 // #include <dwave_sapi.h>
 import "C"
 
+import (
+	"fmt"
+)
+
 // init initializes SAPI.
 func init() {
 	if C.sapi_globalInit() != C.SAPI_OK {
@@ -23,4 +27,41 @@ func init() {
 // Version returns the SAPI version number as a string.
 func Version() string {
 	return C.GoString(C.sapi_version())
+}
+
+// Code represents a SAPI error code
+type Code int
+
+// These are the SAPI error codes known at the time of this writing.
+const (
+	OK                  Code = C.SAPI_OK
+	InvalidParameter         = C.SAPI_ERR_INVALID_PARAMETER
+	SolveFailed              = C.SAPI_ERR_SOLVE_FAILED
+	AuthenticationError      = C.SAPI_ERR_AUTHENTICATION
+	NetworkError             = C.SAPI_ERR_NETWORK
+	CommunicationError       = C.SAPI_ERR_COMMUNICATION
+	AsyncNotDone             = C.SAPI_ERR_ASYNC_NOT_DONE
+	ProblemCanceled          = C.SAPI_ERR_PROBLEM_CANCELLED
+	NotInitialized           = C.SAPI_ERR_NO_INIT
+	OutOfMemory              = C.SAPI_ERR_OUT_OF_MEMORY
+)
+
+// An Error encapsulates a SAPI code and its string representation.
+type Error struct {
+	N Code   // Numerical representation
+	S string // Textual representation
+}
+
+// Error returns the textual representation of an Error.
+func (e Error) Error() string {
+	return e.S
+}
+
+// newErrorf creates a new Error struct from a SAPI return code and error
+// string.
+func newErrorf(c C.sapi_Code, format string, a ...interface{}) Error {
+	return Error{
+		N: Code(c),
+		S: fmt.Sprintf(format, a),
+	}
 }
