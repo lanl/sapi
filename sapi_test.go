@@ -126,22 +126,25 @@ func TestRemoteSolversExist(t *testing.T) {
 	}
 }
 
-// TestLocalSolver ensures we can connect to a local solver.
-func TestLocalSolver(t *testing.T) {
-	conn := sapi.LocalConnection()
-	_, err := conn.GetSolver(localSolverName)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestLocalHardwareAdjacency ensures we can query a local solver's topology.
-func TestLocalHardwareAdjacency(t *testing.T) {
+// prepareLocal is a helper function that initializes a local connection and
+// solver.
+func prepareLocal(t *testing.T) (*sapi.Connection, *sapi.Solver) {
 	conn := sapi.LocalConnection()
 	solver, err := conn.GetSolver(localSolverName)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return conn, solver
+}
+
+// TestLocalSolver ensures we can connect to a local solver.
+func TestLocalSolver(t *testing.T) {
+	prepareLocal(t)
+}
+
+// TestLocalHardwareAdjacency ensures we can query a local solver's topology.
+func TestLocalHardwareAdjacency(t *testing.T) {
+	_, solver := prepareLocal(t)
 	adj, err := solver.HardwareAdjacency()
 	if err != nil {
 		t.Fatal(err)
@@ -151,21 +154,9 @@ func TestLocalHardwareAdjacency(t *testing.T) {
 	}
 }
 
-// TestRemoteSolver ensures we can connect to a remote solver.
-func TestRemoteSolver(t *testing.T) {
-	url, token, proxy, solverName := getRemoteParams(t)
-	conn, err := sapi.RemoteConnection(url, token, proxy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = conn.GetSolver(solverName)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// TestRemoteHardwareAdjacency ensures we can query a remote solver's topology.
-func TestRemoteHardwareAdjacency(t *testing.T) {
+// prepareRemote is a helper function that initializes a remote connection and
+// solver.
+func prepareRemote(t *testing.T) (*sapi.Connection, *sapi.Solver) {
 	url, token, proxy, solverName := getRemoteParams(t)
 	conn, err := sapi.RemoteConnection(url, token, proxy)
 	if err != nil {
@@ -175,6 +166,17 @@ func TestRemoteHardwareAdjacency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return conn, solver
+}
+
+// TestRemoteSolver ensures we can connect to a remote solver.
+func TestRemoteSolver(t *testing.T) {
+	prepareRemote(t)
+}
+
+// TestRemoteHardwareAdjacency ensures we can query a remote solver's topology.
+func TestRemoteHardwareAdjacency(t *testing.T) {
+	_, solver := prepareRemote(t)
 	adj, err := solver.HardwareAdjacency()
 	if err != nil {
 		t.Fatal(err)
@@ -309,49 +311,25 @@ func testAND(t *testing.T, ising bool, solver *sapi.Solver,
 // TestLocalSolveIsing ensures we can solve an Ising-model problem on a local
 // solver.
 func TestLocalSolveIsing(t *testing.T) {
-	conn := sapi.LocalConnection()
-	solver, err := conn.GetSolver(localSolverName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, solver := prepareLocal(t)
 	testAND(t, true, solver, solver.SolveIsing)
 }
 
 // TestLocalSolveIsing ensures we can solve an Ising-model problem on a remote
 // solver.
 func TestRemoteSolveIsing(t *testing.T) {
-	url, token, proxy, solverName := getRemoteParams(t)
-	conn, err := sapi.RemoteConnection(url, token, proxy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	solver, err := conn.GetSolver(solverName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, solver := prepareRemote(t)
 	testAND(t, true, solver, solver.SolveIsing)
 }
 
 // TestLocalSolveQubo ensures we can solve an QUBO problem on a local solver.
 func TestLocalSolveQubo(t *testing.T) {
-	conn := sapi.LocalConnection()
-	solver, err := conn.GetSolver(localSolverName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, solver := prepareLocal(t)
 	testAND(t, false, solver, solver.SolveQubo)
 }
 
 // TestLocalSolveQubo ensures we can solve a QUBO problem on a remote solver.
 func TestRemoteSolveQubo(t *testing.T) {
-	url, token, proxy, solverName := getRemoteParams(t)
-	conn, err := sapi.RemoteConnection(url, token, proxy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	solver, err := conn.GetSolver(solverName)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, solver := prepareRemote(t)
 	testAND(t, false, solver, solver.SolveQubo)
 }
