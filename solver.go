@@ -62,12 +62,83 @@ type QuantumSolverProperties struct {
 	Couplers  [][2]int // Working couplers in the processor
 }
 
+// An AnnealOffsetRange indicates the minimum and maximum values a specfic
+// anneal offset can accept.
+type AnnealOffsetRange [2]float64
+
+// An AnnealOffsetProperties encapsulates properties of per-qubit annealing
+// offsets.
+type AnnealOffsetProperties struct {
+	Ranges   []AnnealOffsetRange // Ranges of valid anneal offset values, in normalized offset units, for each qubit
+	Step     float64             // Quantization step size of anneal offset values in normalized units
+	StepPhi0 float64             // Quantization step size in physical units (annealing flux bias units)
+}
+
 // SolverProperties represents a SAPI solver's properties.
 type SolverProperties struct {
 	props                 *C.sapi_SolverProperties // SAPI solver properties object
 	SupportedProblemTypes []string                 // "qubo" and/or "ising"
 	IsingRanges           *IsingRangeProperties    // Range of h and J coefficients
 	QuantumProps          *QuantumSolverProperties // Properties of the quantum solver
+	AnnealOffsets         *AnnealOffsetProperties  // Properties of the per-qubit annealing offsets
+	Parameters            []string                 // Valid solver parameter names, sorted in ascending order
+}
+
+// convertQSPs converts quantum solver properties from C to Go.
+func convertQSPs(p *C.sapi_SolverProperties) *QuantumSolverProperties {
+	// Do nothing if we have nothing to do.
+	qs := p.quantum_solver
+	if qs == nil {
+		return nil
+	}
+
+	// Convert the qubit count from C to Go.
+	numQubits := int(qs.num_qubits)
+
+	// Convert the qubit list from C to Go.
+	qubits := cIntsToGo(qs.qubits, int(qs.qubits_len))
+
+	// Convert the coupler list from C to Go.
+	nc := qs.couplers_len
+	couplers := make([][2]int, nc)
+	cPtr := (*[1 << 30]C.sapi_Coupler)(unsafe.Pointer(qs.couplers))[:nc:nc]
+	for i := range couplers {
+		couplers[i] = [2]int{
+			int(cPtr[i].q1),
+			int(cPtr[i].q2),
+		}
+	}
+
+	// Store all of the above in the qProps struct.
+	return &QuantumSolverProperties{
+		NumQubits: numQubits,
+		Qubits:    qubits,
+		Couplers:  couplers,
+	}
+}
+
+// convertAOPs converts annealing offset properties from C to Go.
+func convertAOPs(p *C.sapi_SolverProperties) *AnnealOffsetProperties {
+	// Do nothing if we have nothing to do.
+	ao := p.anneal_offset
+	if ao == nil {
+		return nil
+	}
+
+	// Convert the anneal offset ranges.
+	nr := int(ao.ranges_len)
+	ranges := make([]AnnealOffsetRange, nr)
+	rPtr := (*[1 << 30]C.sapi_AnnealOffsetRange)(unsafe.Pointer(ao.ranges))[:nr:nr]
+	for i, r := range rPtr {
+		ranges[i] = [2]float64{float64(r.min), float64(r.max)}
+	}
+
+	// Return the set of properties.
+	return &AnnealOffsetProperties{
+		Ranges:   ranges,
+		Step:     float64(ao.step),
+		StepPhi0: float64(ao.step_phi0),
+	}
 }
 
 // GetProperties returns the properties associated with a SAPI solver.
@@ -78,44 +149,7 @@ func (s *Solver) GetProperties() *SolverProperties {
 	// Convert the supported problem types from C to Go.
 	var spts []string
 	if p.supported_problem_types != nil {
-		nSpts := p.supported_problem_types.len
-		spts = make([]string, nSpts)
-		sptsPtr := (*[1 << 30]*C.char)(unsafe.Pointer(p.supported_problem_types.elements))[:nSpts:nSpts]
-		for i := range spts {
-			spts[i] = C.GoString(sptsPtr[i])
-		}
-	}
-
-	// Convert the quantum solver properties from C to Go.
-	var qProps *QuantumSolverProperties
-	if p.quantum_solver != nil {
-		var numQubits int
-		var qubits []int
-		var couplers [][2]int
-
-		// Convert the qubit count from C to Go.
-		numQubits = int(p.quantum_solver.num_qubits)
-
-		// Convert the qubit list from C to Go.
-		qubits = cIntsToGo(p.quantum_solver.qubits, int(p.quantum_solver.qubits_len))
-
-		// Convert the coupler list from C to Go.
-		nc := p.quantum_solver.couplers_len
-		couplers = make([][2]int, nc)
-		cPtr := (*[1 << 30]C.sapi_Coupler)(unsafe.Pointer(p.quantum_solver.couplers))[:nc:nc]
-		for i := range couplers {
-			couplers[i] = [2]int{
-				int(cPtr[i].q1),
-				int(cPtr[i].q2),
-			}
-		}
-
-		// Store all of the above in the qProps struct.
-		qProps = &QuantumSolverProperties{
-			NumQubits: numQubits,
-			Qubits:    qubits,
-			Couplers:  couplers,
-		}
+		spts = cStringsToGo(p.supported_problem_types.elements, int(p.supported_problem_types.len))
 	}
 
 	// Convert the Ising ranges from C to Go.
@@ -129,12 +163,20 @@ func (s *Solver) GetProperties() *SolverProperties {
 		}
 	}
 
+	// Convert the valid solver parameter names from C to Go.
+	var params []string
+	if p.parameters != nil {
+		params = cStringsToGo(p.parameters.elements, int(p.parameters.len))
+	}
+
 	// Create and initialize a Go solvers properties object and return it.
 	propObj := &SolverProperties{
 		props: p,
 		SupportedProblemTypes: spts,
 		IsingRanges:           ranges,
-		QuantumProps:          qProps,
+		QuantumProps:          convertQSPs(p),
+		AnnealOffsets:         convertAOPs(p),
+		Parameters:            params,
 	}
 	return propObj
 }

@@ -68,11 +68,21 @@ func newErrorf(c C.sapi_Code, format string, a ...interface{}) Error {
 }
 
 // cIntsToGo converts a C array of ints to a Go slice.
-func cIntsToGo(cArray *C.int, nElts int) []int {
-	array := make([]int, nElts)
-	cPtr := (*[1 << 30]C.int)(unsafe.Pointer(cArray))[:nElts:nElts]
+func cIntsToGo(cArray *C.int, n int) []int {
+	a := make([]int, n)
+	cPtr := (*[1 << 30]C.int)(unsafe.Pointer(cArray))[:n:n]
 	for i, v := range cPtr {
-		array[i] = int(v)
+		a[i] = int(v)
 	}
-	return array
+	return a
+}
+
+// cStringsToGo converts a C array of strings to a Go slice.
+func cStringsToGo(cArray **C.char, n int) []string {
+	a := make([]string, n)
+	cPtr := (*[1 << 30]*C.char)(unsafe.Pointer(cArray))[:n:n]
+	for i, v := range cPtr {
+		a[i] = C.GoString(v)
+	}
+	return a
 }
