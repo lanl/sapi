@@ -55,14 +55,19 @@ type IsingRangeProperties struct {
 	JMax float64
 }
 
+// A QuantumSolverProperties records the available qubits and couplers.
+type QuantumSolverProperties struct {
+	NumQubits int      // Total number of qubits, both working and non-working, in the processor
+	Qubits    []int    // Working qubit indices
+	Couplers  [][2]int // Working couplers in the processor
+}
+
 // SolverProperties represents a SAPI solver's properties.
 type SolverProperties struct {
 	props                 *C.sapi_SolverProperties // SAPI solver properties object
 	SupportedProblemTypes []string                 // "qubo" and/or "ising"
 	IsingRanges           *IsingRangeProperties    // Range of h and J coefficients
-	NumQubits             int                      // Total number of qubits, both working and non-working, in the processor
-	Qubits                []int                    // Working qubit indices
-	Couplers              [][2]int                 // Working couplers in the processor
+	QuantumProps          *QuantumSolverProperties // Properties of the quantum solver
 }
 
 // GetProperties returns the properties associated with a SAPI solver.
@@ -82,10 +87,12 @@ func (s *Solver) GetProperties() *SolverProperties {
 	}
 
 	// Convert the quantum solver properties from C to Go.
-	var numQubits int
-	var qubits []int
-	var couplers [][2]int
+	var qProps *QuantumSolverProperties
 	if p.quantum_solver != nil {
+		var numQubits int
+		var qubits []int
+		var couplers [][2]int
+
 		// Convert the qubit count from C to Go.
 		numQubits = int(p.quantum_solver.num_qubits)
 
@@ -101,6 +108,13 @@ func (s *Solver) GetProperties() *SolverProperties {
 				int(cPtr[i].q1),
 				int(cPtr[i].q2),
 			}
+		}
+
+		// Store all of the above in the qProps struct.
+		qProps = &QuantumSolverProperties{
+			NumQubits: numQubits,
+			Qubits:    qubits,
+			Couplers:  couplers,
 		}
 	}
 
@@ -120,9 +134,7 @@ func (s *Solver) GetProperties() *SolverProperties {
 		props: p,
 		SupportedProblemTypes: spts,
 		IsingRanges:           ranges,
-		NumQubits:             numQubits,
-		Qubits:                qubits,
-		Couplers:              couplers,
+		QuantumProps:          qProps,
 	}
 	return propObj
 }

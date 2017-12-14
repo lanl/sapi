@@ -192,7 +192,7 @@ func findFourCycle(s *sapi.Solver) []int {
 	// Construct an adjacency list from the list of couplers.
 	props := s.GetProperties()
 	adj := make(map[int]map[int]bool)
-	for _, cp := range props.Couplers {
+	for _, cp := range props.QuantumProps.Couplers {
 		q0, q1 := cp[0], cp[1]
 		if _, ok := adj[q0]; !ok {
 			adj[q0] = make(map[int]bool, 8)
@@ -205,7 +205,7 @@ func findFourCycle(s *sapi.Solver) []int {
 	}
 
 	// Search every set of four neighbors until we find a square.
-	for _, q0 := range props.Qubits {
+	for _, q0 := range props.QuantumProps.Qubits {
 		for q1 := range adj[q0] {
 			if q1 == q0 {
 				continue
