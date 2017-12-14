@@ -31,6 +31,7 @@ type SolverParameters interface {
 	SetAnnealingTime(us int)
 	SetAutoScale(y bool)
 	SetAnswerMode(m SolverParameterAnswerMode)
+	SetBeta(b float64)
 	SetNumReads(nr int)
 	SetNumSpinReversals(sr int)
 	ToC() *C.sapi_SolverParameters
@@ -62,6 +63,11 @@ func (p *SwSampleSolverParameters) SetAutoScale(y bool) {
 // SetAnswerMode specifies the form in which we want to see the solver's output.
 func (p *SwSampleSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 	p.sssp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
+}
+
+// SetBeta specifies the Boltzmann distribution parameter.
+func (p *SwSampleSolverParameters) SetBeta(b float64) {
+	p.sssp.beta = C.double(b)
 }
 
 // SetNumReads specifies the number of reads to take.
@@ -108,6 +114,10 @@ func (p *SwOptimizeSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) 
 	p.sosp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
 }
 
+// SetBeta specifies the Boltzmann distribution parameter.
+func (p *SwOptimizeSolverParameters) SetBeta(b float64) {
+}
+
 // SetNumReads specifies the number of reads to take.
 func (p *SwOptimizeSolverParameters) SetNumReads(nr int) {
 	p.sosp.num_reads = C.int(nr)
@@ -149,6 +159,10 @@ func (p *SwHeuristicSolverParameters) SetAutoScale(y bool) {
 
 // SetAnswerMode specifies the form in which we want to see the solver's output.
 func (p *SwHeuristicSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
+}
+
+// SetBeta specifies the Boltzmann distribution parameter.
+func (p *SwHeuristicSolverParameters) SetBeta(b float64) {
 }
 
 // SetNumReads specifies the number of reads to take (unused by this solver).
@@ -195,6 +209,11 @@ func (p *QuantumSolverParameters) SetAutoScale(y bool) {
 // SetAnswerMode specifies the form in which we want to see the solver's output.
 func (p *QuantumSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 	p.qsp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
+}
+
+// SetBeta specifies the Boltzmann distribution parameter.
+func (p *QuantumSolverParameters) SetBeta(b float64) {
+	p.qsp.beta = C.double(b)
 }
 
 // SetNumReads specifies the number of reads to take.
