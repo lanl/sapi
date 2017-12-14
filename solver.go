@@ -46,10 +46,20 @@ func (c *Connection) GetSolver(name string) (*Solver, error) {
 	return solverObj, nil
 }
 
+// An IsingRangeProperties indicates the acceptable ranges of h and J
+// coefficients.
+type IsingRangeProperties struct {
+	HMin float64
+	HMax float64
+	JMin float64
+	JMax float64
+}
+
 // SolverProperties represents a SAPI solver's properties.
 type SolverProperties struct {
 	props                 *C.sapi_SolverProperties // SAPI solver properties object
 	SupportedProblemTypes []string                 // "qubo" and/or "ising"
+	IsingRanges           *IsingRangeProperties    // Range of h and J coefficients
 	NumQubits             int                      // Total number of qubits, both working and non-working, in the processor
 	Qubits                []int                    // Working qubit indices
 	Couplers              [][2]int                 // Working couplers in the processor
@@ -99,10 +109,22 @@ func (s *Solver) GetProperties() *SolverProperties {
 		}
 	}
 
+	// Convert the Ising ranges from C to Go.
+	var ranges *IsingRangeProperties
+	if p.ising_ranges != nil {
+		ranges = &IsingRangeProperties{
+			HMin: float64(p.ising_ranges.h_min),
+			HMax: float64(p.ising_ranges.h_max),
+			JMin: float64(p.ising_ranges.j_min),
+			JMax: float64(p.ising_ranges.j_max),
+		}
+	}
+
 	// Create and initialize a Go solvers properties object and return it.
 	propObj := &SolverProperties{
 		props: p,
 		SupportedProblemTypes: spts,
+		IsingRanges:           ranges,
 		NumQubits:             numQubits,
 		Qubits:                qubits,
 		Couplers:              couplers,
