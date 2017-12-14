@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"fmt"
+	"unsafe"
 )
 
 // init initializes SAPI.
@@ -64,4 +65,14 @@ func newErrorf(c C.sapi_Code, format string, a ...interface{}) Error {
 		N: Code(c),
 		S: fmt.Sprintf(format, a),
 	}
+}
+
+// cIntsToGo converts a C array of ints to a Go slice.
+func cIntsToGo(cArray *C.int, nElts int) []int {
+	array := make([]int, nElts)
+	cPtr := (*[1 << 30]C.int)(unsafe.Pointer(cArray))[:nElts:nElts]
+	for i, v := range cPtr {
+		array[i] = int(v)
+	}
+	return array
 }

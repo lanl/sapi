@@ -90,12 +90,7 @@ func (s *Solver) GetProperties() *SolverProperties {
 		numQubits = int(p.quantum_solver.num_qubits)
 
 		// Convert the qubit list from C to Go.
-		nq := p.quantum_solver.qubits_len
-		qubits = make([]int, nq)
-		qPtr := (*[1 << 30]C.int)(unsafe.Pointer(p.quantum_solver.qubits))[:nq:nq]
-		for i := range qubits {
-			qubits[i] = int(qPtr[i])
-		}
+		qubits = cIntsToGo(p.quantum_solver.qubits, int(p.quantum_solver.qubits_len))
 
 		// Convert the coupler list from C to Go.
 		nc := p.quantum_solver.couplers_len
@@ -167,11 +162,7 @@ func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
 	}
 
 	// Convert the resulting tallies from C to Go.
-	oPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.num_occurrences))[:ns:ns]
-	occurs := make([]int, ns)
-	for i, v := range oPtr {
-		occurs[i] = int(v)
-	}
+	occurs := cIntsToGo(result.num_occurrences, ns)
 
 	// Free the C data and return the Go result.
 	C.sapi_freeIsingResult(result)
