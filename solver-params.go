@@ -32,6 +32,7 @@ type SolverParameters interface {
 	SetAutoScale(y bool)
 	SetAnswerMode(m SolverParameterAnswerMode)
 	SetBeta(b float64)
+	SetChains(cs []int)
 	SetNumReads(nr int)
 	SetNumSpinReversals(sr int)
 	ToC() *C.sapi_SolverParameters
@@ -68,6 +69,11 @@ func (p *SwSampleSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 // SetBeta specifies the Boltzmann distribution parameter.
 func (p *SwSampleSolverParameters) SetBeta(b float64) {
 	p.sssp.beta = C.double(b)
+}
+
+// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
+// contains qubit i; -1 means a singleton chain.
+func (p *SwSampleSolverParameters) SetChains(cs []int) {
 }
 
 // SetNumReads specifies the number of reads to take.
@@ -118,6 +124,11 @@ func (p *SwOptimizeSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) 
 func (p *SwOptimizeSolverParameters) SetBeta(b float64) {
 }
 
+// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
+// contains qubit i; -1 means a singleton chain.
+func (p *SwOptimizeSolverParameters) SetChains(cs []int) {
+}
+
 // SetNumReads specifies the number of reads to take.
 func (p *SwOptimizeSolverParameters) SetNumReads(nr int) {
 	p.sosp.num_reads = C.int(nr)
@@ -163,6 +174,11 @@ func (p *SwHeuristicSolverParameters) SetAnswerMode(m SolverParameterAnswerMode)
 
 // SetBeta specifies the Boltzmann distribution parameter.
 func (p *SwHeuristicSolverParameters) SetBeta(b float64) {
+}
+
+// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
+// contains qubit i; -1 means a singleton chain.
+func (p *SwHeuristicSolverParameters) SetChains(cs []int) {
 }
 
 // SetNumReads specifies the number of reads to take (unused by this solver).
@@ -214,6 +230,25 @@ func (p *QuantumSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 // SetBeta specifies the Boltzmann distribution parameter.
 func (p *QuantumSolverParameters) SetBeta(b float64) {
 	p.qsp.beta = C.double(b)
+}
+
+// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
+// contains qubit i; -1 means a singleton chain.
+func (p *QuantumSolverParameters) SetChains(cs []int) {
+	if len(cs) == 0 {
+		p.qsp.chains = nil
+		return
+	}
+	nc := C.size_t(len(cs))
+	chains := (*C.sapi_Chains)(C.malloc(C.sizeof_sapi_Chains))
+	chains.len = nc
+	elts := C.malloc(C.sizeof_int * nc)
+	ePtr := (*[1 << 30]C.int)(elts)[:nc:nc]
+	for i, c := range cs {
+		ePtr[i] = C.int(c)
+	}
+	chains.elements = (*C.int)(elts)
+	p.qsp.chains = chains
 }
 
 // SetNumReads specifies the number of reads to take.
