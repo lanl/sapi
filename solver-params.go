@@ -14,12 +14,23 @@ import (
 	"unsafe"
 )
 
+// A SolverParameterAnswerMode indicates the format in which we want the solver
+// to return solutions.
+type SolverParameterAnswerMode int
+
+// These are answer modes a solver can accept.
+const (
+	AnswerModeHistogram SolverParameterAnswerMode = C.SAPI_ANSWER_MODE_HISTOGRAM
+	AnswerModeRaw                                 = C.SAPI_ANSWER_MODE_RAW
+)
+
 // SolverParameters is presented as an interface so the caller does not need to
 // use different data structures for the different solver types (quantum or the
 // various software solvers).
 type SolverParameters interface {
 	SetAnnealingTime(us int)
 	SetAutoScale(y bool)
+	SetAnswerMode(m SolverParameterAnswerMode)
 	SetNumReads(nr int)
 	SetNumSpinReversals(sr int)
 	ToC() *C.sapi_SolverParameters
@@ -46,6 +57,11 @@ func (p *SwSampleSolverParameters) SetAnnealingTime(us int) {
 // SetAutoScale specifies whether coefficients should be automatically scaled
 // (unused by this solver).
 func (p *SwSampleSolverParameters) SetAutoScale(y bool) {
+}
+
+// SetAnswerMode specifies the form in which we want to see the solver's output.
+func (p *SwSampleSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
+	p.sssp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
 }
 
 // SetNumReads specifies the number of reads to take.
@@ -87,6 +103,11 @@ func (p *SwOptimizeSolverParameters) SetAnnealingTime(us int) {
 func (p *SwOptimizeSolverParameters) SetAutoScale(y bool) {
 }
 
+// SetAnswerMode specifies the form in which we want to see the solver's output.
+func (p *SwOptimizeSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
+	p.sosp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
+}
+
 // SetNumReads specifies the number of reads to take.
 func (p *SwOptimizeSolverParameters) SetNumReads(nr int) {
 	p.sosp.num_reads = C.int(nr)
@@ -124,6 +145,10 @@ func (p *SwHeuristicSolverParameters) SetAnnealingTime(us int) {
 // SetAutoScale specifies whether coefficients should be automatically scaled
 // (unused by this solver).
 func (p *SwHeuristicSolverParameters) SetAutoScale(y bool) {
+}
+
+// SetAnswerMode specifies the form in which we want to see the solver's output.
+func (p *SwHeuristicSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 }
 
 // SetNumReads specifies the number of reads to take (unused by this solver).
@@ -165,6 +190,11 @@ func (p *QuantumSolverParameters) SetAutoScale(y bool) {
 	} else {
 		p.qsp.auto_scale = 0
 	}
+}
+
+// SetAnswerMode specifies the form in which we want to see the solver's output.
+func (p *QuantumSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
+	p.qsp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
 }
 
 // SetNumReads specifies the number of reads to take.

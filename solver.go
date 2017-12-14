@@ -62,7 +62,7 @@ type QuantumSolverProperties struct {
 	Couplers  [][2]int // Working couplers in the processor
 }
 
-// An AnnealOffsetRange indicates the minimum and maximum values a specfic
+// An AnnealOffsetRange indicates the minimum and maximum values a specific
 // anneal offset can accept.
 type AnnealOffsetRange [2]float64
 
