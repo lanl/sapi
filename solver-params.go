@@ -39,6 +39,7 @@ const (
 // use different data structures for the different solver types (quantum or the
 // various software solvers).
 type SolverParameters interface {
+	SetAnnealOffsets(ao []float64)
 	SetAnnealingTime(at int)
 	SetAnswerMode(m SolverParameterAnswerMode)
 	SetAutoScale(y bool)
@@ -120,6 +121,39 @@ func NewQuantumSolverParameters() *QuantumSolverParameters {
 	return &QuantumSolverParameters{
 		qsp: C.SAPI_QUANTUM_SOLVER_DEFAULT_PARAMETERS,
 	}
+}
+
+// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// For SwSampleSolverParameters, this method is a no-op.
+func (p *SwSampleSolverParameters) SetAnnealOffsets(ao []float64) {
+}
+
+// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// For SwOptimizeSolverParameters, this method is a no-op.
+func (p *SwOptimizeSolverParameters) SetAnnealOffsets(ao []float64) {
+}
+
+// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// For SwHeuristicSolverParameters, this method is a no-op.
+func (p *SwHeuristicSolverParameters) SetAnnealOffsets(ao []float64) {
+}
+
+// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+func (p *QuantumSolverParameters) SetAnnealOffsets(ao []float64) {
+	if len(ao) == 0 {
+		p.qsp.anneal_offsets = nil
+		return
+	}
+	na := C.size_t(len(ao))
+	ofs := (*C.sapi_AnnealOffsets)(C.malloc(C.sizeof_sapi_AnnealOffsets))
+	ofs.len = na
+	elts := C.malloc(C.sizeof_double * na)
+	ePtr := (*[1 << 30]C.double)(elts)[:na:na]
+	for i, o := range ao {
+		ePtr[i] = C.double(o)
+	}
+	ofs.elements = (*C.double)(elts)
+	p.qsp.anneal_offsets = ofs
 }
 
 // SetAnnealingTime specifies the annealing time in microseconds.
