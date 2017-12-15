@@ -281,10 +281,3 @@ func (s *Solver) NewSolverParameters() SolverParameters {
 		return NewQuantumSolverParameters()
 	}
 }
-
-// An IsingResult represents a solver's output in Ising-model form.
-type IsingResult struct {
-	Solutions   [][]int8  // Solutions found (±1 or 3 for "unused")
-	Energies    []float64 // Energy of each solution
-	Occurrences []int     // Tally of occurrences of each solution
-}

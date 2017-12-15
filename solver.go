@@ -192,6 +192,13 @@ func (s *Solver) HardwareAdjacency() (Problem, error) {
 	return problemFromC(cProb), nil
 }
 
+// An IsingResult represents a solver's output in Ising-model form.
+type IsingResult struct {
+	Solutions   [][]int8  // Solutions found (±1 or 3 for "unused")
+	Energies    []float64 // Energy of each solution
+	Occurrences []int     // Tally of occurrences of each solution
+}
+
 // convertIsingResultToGo is a helper function for SolveIsing and SolveQubo
 // that converts the returned C.sapi_IsingResult structure to a Go-friendly
 // format.
