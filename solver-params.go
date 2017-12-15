@@ -123,19 +123,16 @@ func NewQuantumSolverParameters() *QuantumSolverParameters {
 }
 
 // SetAnnealingTime specifies the annealing time in microseconds.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetAnnealingTime(at int) {
 }
 
 // SetAnnealingTime specifies the annealing time in microseconds.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetAnnealingTime(at int) {
 }
 
 // SetAnnealingTime specifies the annealing time in microseconds.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetAnnealingTime(at int) {
 }
@@ -156,7 +153,6 @@ func (p *SwOptimizeSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) 
 }
 
 // SetAnswerMode specifies the form in which we want to see the solver's output.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 }
@@ -167,19 +163,16 @@ func (p *QuantumSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
 }
 
 // SetAutoScale specifies whether coefficients should be automatically scaled.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetAutoScale(y bool) {
 }
 
 // SetAutoScale specifies whether coefficients should be automatically scaled.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetAutoScale(y bool) {
 }
 
 // SetAutoScale specifies whether coefficients should be automatically scaled.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetAutoScale(y bool) {
 }
@@ -199,13 +192,11 @@ func (p *SwSampleSolverParameters) SetBeta(b float64) {
 }
 
 // SetBeta specifies the Boltzmann distribution parameter.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetBeta(b float64) {
 }
 
 // SetBeta specifies the Boltzmann distribution parameter.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetBeta(b float64) {
 }
@@ -217,21 +208,18 @@ func (p *QuantumSolverParameters) SetBeta(b float64) {
 
 // SetChains indicates where all the chains lie.  The value of c[i] means c[i]
 // contains qubit i; -1 means a singleton chain.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetChains(cs []int) {
 }
 
 // SetChains indicates where all the chains lie.  The value of c[i] means c[i]
 // contains qubit i; -1 means a singleton chain.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetChains(cs []int) {
 }
 
 // SetChains indicates where all the chains lie.  The value of c[i] means c[i]
 // contains qubit i; -1 means a singleton chain.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetChains(cs []int) {
 }
@@ -269,7 +257,6 @@ func (p *SwOptimizeSolverParameters) SetMaxAnswers(ma int) {
 
 // SetMaxAnswers specifies the maximum number of answers the solver should
 // return.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetMaxAnswers(ma int) {
 }
@@ -291,7 +278,6 @@ func (p *SwOptimizeSolverParameters) SetNumReads(nr int) {
 }
 
 // SetNumReads specifies the number of reads to take.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetNumReads(nr int) {
 }
@@ -303,21 +289,18 @@ func (p *QuantumSolverParameters) SetNumReads(nr int) {
 
 // SetNumSpinReversals specifies the number of spin-reversal transformations to
 // perform.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetNumSpinReversals(sr int) {
 }
 
 // SetNumSpinReversals specifies the number of spin-reversal transformations to
 // perform.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetNumSpinReversals(sr int) {
 }
 
 // SetNumSpinReversals specifies the number of spin-reversal transformations to
 // perform.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetNumSpinReversals(sr int) {
 }
@@ -329,19 +312,16 @@ func (p *QuantumSolverParameters) SetNumSpinReversals(sr int) {
 }
 
 // SetPostprocessing requests the the solver's output be postprocessed.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetPostprocessing(pp Postprocessing) {
 }
 
 // SetPostprocessing requests the the solver's output be postprocessed.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetPostprocessing(pp Postprocessing) {
 }
 
 // SetPostprocessing requests the the solver's output be postprocessed.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetPostprocessing(pp Postprocessing) {
 }
@@ -353,21 +333,18 @@ func (p *QuantumSolverParameters) SetPostprocessing(pp Postprocessing) {
 
 // SetProgTherm specifies the time in microseconds to wait after programming
 // the quantum processor in order for it to cool back to base temperature.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetProgTherm(pt int) {
 }
 
 // SetProgTherm specifies the time in microseconds to wait after programming
 // the quantum processor in order for it to cool back to base temperature.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetProgTherm(pt int) {
 }
 
 // SetProgTherm specifies the time in microseconds to wait after programming
 // the quantum processor in order for it to cool back to base temperature.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetProgTherm(pt int) {
 }
@@ -381,7 +358,6 @@ func (p *QuantumSolverParameters) SetProgTherm(pt int) {
 // SetReadoutTherm specifies the time in microseconds to wait after each state
 // is read from the quantum processor in order for it to cool back to base
 // temperature.
-//
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetReadoutTherm(pt int) {
 }
@@ -389,7 +365,6 @@ func (p *SwSampleSolverParameters) SetReadoutTherm(pt int) {
 // SetReadoutTherm specifies the time in microseconds to wait after each state
 // is read from the quantum processor in order for it to cool back to base
 // temperature.
-//
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetReadoutTherm(pt int) {
 }
@@ -397,7 +372,6 @@ func (p *SwOptimizeSolverParameters) SetReadoutTherm(pt int) {
 // SetReadoutTherm specifies the time in microseconds to wait after each state
 // is read from the quantum processor in order for it to cool back to base
 // temperature.
-//
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetReadoutTherm(pt int) {
 }
