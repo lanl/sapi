@@ -7,7 +7,7 @@ add more functionality as the need arises.
 */
 package sapi
 
-//go:generate bash -c "perl gen-solver-params | gofmt > solver-params.go"
+//go:generate perl gen-solver-params
 
 // #cgo LDFLAGS: -ldwave_sapi
 // #include <stdio.h>
