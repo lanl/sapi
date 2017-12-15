@@ -28,7 +28,7 @@ sub generate_method (@) {
     my $stub_template = $full_template;
     my %full_solvers = map {$_ => 1} @_;
     $stub_template =~ s/\{.*\}/\{\n\}/gs;
-    $stub_template =~ s!^func!//\n// For [STRUCT], this method is a no-op.\nfunc!gm;
+    $stub_template =~ s!^func!// For [STRUCT], this method is a no-op.\nfunc!gm;
     foreach my $type (@solver_types) {
 	my ($struct, $field, $const) = @{$solvers{$type}};
 	my $code = defined $full_solvers{$type} ? $full_template : $stub_template;

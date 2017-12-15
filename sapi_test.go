@@ -186,14 +186,11 @@ func TestRemoteHardwareAdjacency(t *testing.T) {
 	}
 }
 
-// findFourCycle finds a set of four distinct qubits with connections (0, 1),
-// (1, 2), (2, 3), and (3, 0).
-func findFourCycle(s *sapi.Solver) []int {
-	// Construct an adjacency list from the list of couplers.
-	props := s.GetProperties()
+// couplersToAdj constructs an adjacency list from a list of couplers.
+func couplersToAdj(cs [][2]int) map[int]map[int]bool {
 	adj := make(map[int]map[int]bool)
-	for _, cp := range props.QuantumProps.Couplers {
-		q0, q1 := cp[0], cp[1]
+	for _, c := range cs {
+		q0, q1 := c[0], c[1]
 		if _, ok := adj[q0]; !ok {
 			adj[q0] = make(map[int]bool, 8)
 		}
@@ -203,8 +200,15 @@ func findFourCycle(s *sapi.Solver) []int {
 		}
 		adj[q1][q0] = true
 	}
+	return adj
+}
 
+// findFourCycle finds a set of four distinct qubits with connections (0, 1),
+// (1, 2), (2, 3), and (3, 0).
+func findFourCycle(s *sapi.Solver) []int {
 	// Search every set of four neighbors until we find a square.
+	props := s.GetProperties()
+	adj := couplersToAdj(props.QuantumProps.Couplers)
 	for _, q0 := range props.QuantumProps.Qubits {
 		for q1 := range adj[q0] {
 			if q1 == q0 {
