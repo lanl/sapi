@@ -50,6 +50,7 @@ type SolverParameters interface {
 	SetNumSpinReversals(sr int)
 	SetPostprocessing(pp Postprocessing)
 	SetProgTherm(pt int)
+	SetRandomSeed(rs uint)
 	SetReadoutTherm(rt int)
 	ToC() *C.sapi_SolverParameters
 }
@@ -123,22 +124,22 @@ func NewQuantumSolverParameters() *QuantumSolverParameters {
 	}
 }
 
-// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// SetAnnealOffsets specifies a per-qubit annealing offset to use.
 // For SwSampleSolverParameters, this method is a no-op.
 func (p *SwSampleSolverParameters) SetAnnealOffsets(ao []float64) {
 }
 
-// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// SetAnnealOffsets specifies a per-qubit annealing offset to use.
 // For SwOptimizeSolverParameters, this method is a no-op.
 func (p *SwOptimizeSolverParameters) SetAnnealOffsets(ao []float64) {
 }
 
-// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// SetAnnealOffsets specifies a per-qubit annealing offset to use.
 // For SwHeuristicSolverParameters, this method is a no-op.
 func (p *SwHeuristicSolverParameters) SetAnnealOffsets(ao []float64) {
 }
 
-// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// SetAnnealOffsets specifies a per-qubit annealing offset to use.
 func (p *QuantumSolverParameters) SetAnnealOffsets(ao []float64) {
 	if len(ao) == 0 {
 		p.qsp.anneal_offsets = nil
@@ -387,6 +388,28 @@ func (p *SwHeuristicSolverParameters) SetProgTherm(pt int) {
 // the quantum processor in order for it to cool back to base temperature.
 func (p *QuantumSolverParameters) SetProgTherm(pt int) {
 	p.qsp.programming_thermalization = C.int(pt)
+}
+
+// SetRandomSeed sets a seed for the random-number generator.
+func (p *SwSampleSolverParameters) SetRandomSeed(rs uint) {
+	p.sssp.random_seed = C.uint(rs)
+	p.sssp.use_random_seed = 1
+}
+
+// SetRandomSeed sets a seed for the random-number generator.
+// For SwOptimizeSolverParameters, this method is a no-op.
+func (p *SwOptimizeSolverParameters) SetRandomSeed(rs uint) {
+}
+
+// SetRandomSeed sets a seed for the random-number generator.
+func (p *SwHeuristicSolverParameters) SetRandomSeed(rs uint) {
+	p.shsp.random_seed = C.uint(rs)
+	p.shsp.use_random_seed = 1
+}
+
+// SetRandomSeed sets a seed for the random-number generator.
+// For QuantumSolverParameters, this method is a no-op.
+func (p *QuantumSolverParameters) SetRandomSeed(rs uint) {
 }
 
 // SetReadoutTherm specifies the time in microseconds to wait after each state

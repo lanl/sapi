@@ -93,6 +93,7 @@ type SolverParameters interface {
 	SetNumSpinReversals(sr int)
 	SetPostprocessing(pp Postprocessing)
 	SetProgTherm(pt int)
+	SetRandomSeed(rs uint)
 	SetReadoutTherm(rt int)
 	ToC() *C.sapi_SolverParameters
 }
@@ -152,7 +153,7 @@ NEW
 ;
 
 generate_method("hw", <<'ANN_OFS');
-// SetAnnealOffsets specifies the per-qubit annealing offset to use.
+// SetAnnealOffsets specifies a per-qubit annealing offset to use.
 func (p *[STRUCT]) SetAnnealOffsets(ao []float64) {
 	if len(ao) == 0 {
 		p.[FIELD].anneal_offsets = nil
@@ -271,6 +272,15 @@ func (p *[STRUCT]) SetProgTherm(pt int) {
 	p.[FIELD].programming_thermalization = C.int(pt)
 }
 PROG_THERM
+;
+
+generate_method(qw(samp heur), <<'RAND_SEED');
+// SetRandomSeed sets a seed for the random-number generator.
+func (p *[STRUCT]) SetRandomSeed(rs uint) {
+	p.[FIELD].random_seed = C.uint(rs)
+	p.[FIELD].use_random_seed = 1
+}
+RAND_SEED
 ;
 
 generate_method("hw", <<'READ_THERM');
