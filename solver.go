@@ -238,7 +238,7 @@ func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
 // SolveIsing solves an Ising-model problem.
 func (s *Solver) SolveIsing(p Problem, sp SolverParameters) (IsingResult, error) {
 	prob := p.toC()
-	params := sp.ToC()
+	params := sp.ToCSolverParameters()
 	var result *C.sapi_IsingResult
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
 	if ret := C.sapi_solveIsing(s.solver, prob, params, &result, &cErr[0]); ret != C.SAPI_OK {
@@ -250,7 +250,7 @@ func (s *Solver) SolveIsing(p Problem, sp SolverParameters) (IsingResult, error)
 // SolveQubo solves a QUBO problem.
 func (s *Solver) SolveQubo(p Problem, sp SolverParameters) (IsingResult, error) {
 	prob := p.toC()
-	params := sp.ToC()
+	params := sp.ToCSolverParameters()
 	var result *C.sapi_IsingResult
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
 	if ret := C.sapi_solveQubo(s.solver, prob, params, &result, &cErr[0]); ret != C.SAPI_OK {

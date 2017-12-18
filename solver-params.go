@@ -25,7 +25,8 @@ const (
 	AnswerModeRaw                                 = C.SAPI_ANSWER_MODE_RAW
 )
 
-// Postprocessing indicates the type of postprocessing the solver should perform.
+// Postprocessing indicates the type of postprocessing the solver should
+// perform.
 type Postprocessing int
 
 // These are the supported types of postprocessing a solver can perform.
@@ -36,23 +37,10 @@ const (
 )
 
 // SolverParameters is presented as an interface so the caller does not need to
-// use different data structures for the different solver types (quantum or the
-// various software solvers).
+// use different data structures for the different solver types (quantum
+// hardware or the various software solvers).
 type SolverParameters interface {
-	SetAnnealOffsets(ao []float64)
-	SetAnnealingTime(at int)
-	SetAnswerMode(m SolverParameterAnswerMode)
-	SetAutoScale(y bool)
-	SetBeta(b float64)
-	SetChains(cs []int)
-	SetMaxAnswers(ma int)
-	SetNumReads(nr int)
-	SetNumSpinReversals(sr int)
-	SetPostprocessing(pp Postprocessing)
-	SetProgTherm(pt int)
-	SetRandomSeed(rs uint)
-	SetReadoutTherm(rt int)
-	ToC() *C.sapi_SolverParameters
+	ToCSolverParameters() *C.sapi_SolverParameters
 }
 
 // NewSolverParameters returns an appropriate SolverParameters for the solver
@@ -60,208 +48,186 @@ type SolverParameters interface {
 func (s *Solver) NewSolverParameters() SolverParameters {
 	switch {
 	case strings.HasSuffix(s.Name, "-sw_optimize"):
-		return NewSwOptimizeSolverParameters()
+		return newSwOptimizeSolverParameters()
 	case strings.HasSuffix(s.Name, "-sw_sample"):
-		return NewSwSampleSolverParameters()
+		return newSwSampleSolverParameters()
 	case strings.HasSuffix(s.Name, "-heuristic"):
-		return NewSwHeuristicSolverParameters()
+		return newSwHeuristicSolverParameters()
 	default:
-		return NewQuantumSolverParameters()
+		return newQuantumSolverParameters()
 	}
-}
-
-// A SwSampleSolverParameters represents the parameters that can be passed to a
-// sampling software solver.  It implements the SolverParameters interface.
-type SwSampleSolverParameters struct {
-	sssp C.sapi_SwSampleSolverParameters
 }
 
 // A SwOptimizeSolverParameters represents the parameters that can be passed to
 // an optimizing software solver.  It implements the SolverParameters
 // interface.
 type SwOptimizeSolverParameters struct {
-	sosp C.sapi_SwOptimizeSolverParameters
+	sosp       C.sapi_SwOptimizeSolverParameters // C version of the parameters
+	AnswerMode SolverParameterAnswerMode         // Whether to return individual answers or a histogram
+	MaxAnswers int                               // Maximum number of answers to return
+	NumReads   int                               // Number of samples to take
+}
+
+// newSwOptimizeSolverParameters returns a new SwOptimizeSolverParameters.
+func newSwOptimizeSolverParameters() *SwOptimizeSolverParameters {
+	cSosp := C.SAPI_SW_OPTIMIZE_SOLVER_DEFAULT_PARAMETERS
+	return &SwOptimizeSolverParameters{
+		sosp:       cSosp,
+		AnswerMode: SolverParameterAnswerMode(cSosp.answer_mode),
+		MaxAnswers: int(cSosp.max_answers),
+		NumReads:   int(cSosp.num_reads),
+	}
+}
+
+// ToCSolverParameters converts a SwOptimizeSolverParameters to a
+// sapi_SolverParameters.
+func (p *SwOptimizeSolverParameters) ToCSolverParameters() *C.sapi_SolverParameters {
+	p.sosp.answer_mode = C.sapi_SolverParameterAnswerMode(p.AnswerMode)
+	p.sosp.max_answers = C.int(p.MaxAnswers)
+	p.sosp.num_reads = C.int(p.NumReads)
+	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.sosp))
+}
+
+// A SwSampleSolverParameters represents the parameters that can be passed to a
+// sampling software solver.  It implements the SolverParameters interface.
+type SwSampleSolverParameters struct {
+	sssp          C.sapi_SwSampleSolverParameters // C version of the parameters
+	AnswerMode    SolverParameterAnswerMode       // Answer mode
+	Beta          float64                         // Boltzmann distribution parameter
+	MaxAnswers    int                             // Maximum number of answers to return
+	NumReads      int                             // Number of samples to take
+	UseRandomSeed bool                            // true if RandomSeed is to be honored
+	RandomSeed    uint                            // Seed for the random-number generator
+}
+
+// newSwSampleSolverParameters returns a new SwSampleSolverParameters.
+func newSwSampleSolverParameters() *SwSampleSolverParameters {
+	cSssp := C.SAPI_SW_SAMPLE_SOLVER_DEFAULT_PARAMETERS
+	cIntToBool := map[C.int]bool{0: false, 1: true}
+	return &SwSampleSolverParameters{
+		sssp:          cSssp,
+		AnswerMode:    SolverParameterAnswerMode(cSssp.answer_mode),
+		Beta:          float64(cSssp.beta),
+		MaxAnswers:    int(cSssp.max_answers),
+		NumReads:      int(cSssp.num_reads),
+		UseRandomSeed: cIntToBool[cSssp.use_random_seed],
+		RandomSeed:    uint(cSssp.random_seed),
+	}
+}
+
+// ToCSolverParameters converts a SwSampleSolverParameters to a
+// sapi_SolverParameters.
+func (p *SwSampleSolverParameters) ToCSolverParameters() *C.sapi_SolverParameters {
+	p.sssp.answer_mode = C.sapi_SolverParameterAnswerMode(p.AnswerMode)
+	p.sssp.beta = C.double(p.Beta)
+	p.sssp.max_answers = C.int(p.MaxAnswers)
+	p.sssp.num_reads = C.int(p.NumReads)
+	if p.UseRandomSeed {
+		p.sssp.use_random_seed = 1
+	} else {
+		p.sssp.use_random_seed = 0
+	}
+	p.sssp.random_seed = C.uint(p.RandomSeed)
+	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.sssp))
 }
 
 // A SwHeuristicSolverParameters represents the parameters that can be passed
 // to a heuristic software solver.  It implements the SolverParameters
 // interface.
 type SwHeuristicSolverParameters struct {
-	shsp C.sapi_SwHeuristicSolverParameters
+	shsp               C.sapi_SwHeuristicSolverParameters // C version of the parameters
+	IterationLimit     int                                // Maximum number of solver iterations
+	MinBitFlipProb     float64                            // Minimum bit-flip probability
+	MaxBitFlipProb     float64                            // Maximum bit-flip probability
+	MaxLocalComplexity int                                // Maximum complexity of subgraphs used during local search
+	LocalStuckLimit    int                                // Maximum number of consecutive local search steps that do not improve solution quality
+	NumPerturbedCopies int                                // Number of perturbed solution copies created at each iteration
+	NumVariables       int                                // Lower bound on the number of variables
+	UseRandomSeed      bool                               // true if RandomSeed is to be honored
+	RandomSeed         uint                               // Seed for the random-number generator
+	TimeLimitSeconds   float64                            // Maximum wall-clock time in seconds
+}
+
+// newSwHeuristicSolverParameters returns a new SwHeuristicSolverParameters.
+func newSwHeuristicSolverParameters() *SwHeuristicSolverParameters {
+	cShsp := C.SAPI_SW_HEURISTIC_SOLVER_DEFAULT_PARAMETERS
+	cIntToBool := map[C.int]bool{0: false, 1: true}
+	return &SwHeuristicSolverParameters{
+		shsp:               cShsp,
+		IterationLimit:     int(cShsp.iteration_limit),
+		MinBitFlipProb:     float64(cShsp.min_bit_flip_prob),
+		MaxBitFlipProb:     float64(cShsp.max_bit_flip_prob),
+		MaxLocalComplexity: int(cShsp.max_local_complexity),
+		LocalStuckLimit:    int(cShsp.local_stuck_limit),
+		NumPerturbedCopies: int(cShsp.num_perturbed_copies),
+		NumVariables:       int(cShsp.num_variables),
+		UseRandomSeed:      cIntToBool[cShsp.use_random_seed],
+		RandomSeed:         uint(cShsp.random_seed),
+		TimeLimitSeconds:   float64(cShsp.time_limit_seconds),
+	}
+}
+
+// ToCSolverParameters converts a SwHeuristicSolverParameters to a
+// sapi_SolverParameters.
+func (p *SwHeuristicSolverParameters) ToCSolverParameters() *C.sapi_SolverParameters {
+	p.shsp.iteration_limit = C.int(p.IterationLimit)
+	p.shsp.min_bit_flip_prob = C.double(p.MinBitFlipProb)
+	p.shsp.max_bit_flip_prob = C.double(p.MaxBitFlipProb)
+	p.shsp.max_local_complexity = C.int(p.MaxLocalComplexity)
+	p.shsp.local_stuck_limit = C.int(p.LocalStuckLimit)
+	p.shsp.num_perturbed_copies = C.int(p.NumPerturbedCopies)
+	p.shsp.num_variables = C.int(p.NumVariables)
+	if p.UseRandomSeed {
+		p.shsp.use_random_seed = 1
+	} else {
+		p.shsp.use_random_seed = 0
+	}
+	p.shsp.random_seed = C.uint(p.RandomSeed)
+	p.shsp.time_limit_seconds = C.double(p.TimeLimitSeconds)
+	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.shsp))
 }
 
 // A QuantumSolverParameters represents the parameters that can be passed to a
 // quantum solver.  It implements the SolverParameters interface.
 type QuantumSolverParameters struct {
-	qsp C.sapi_QuantumSolverParameters
+	qsp              C.sapi_QuantumSolverParameters // C version of the parameters
+	AnnealingTime    int                            // Annealing time in microseconds
+	AnswerMode       SolverParameterAnswerMode      // Whether to return individual answers or a histogram
+	AutoScale        bool                           // Scale coefficients to their maximum range
+	Beta             float64                        // Boltzmann distribution parameter
+	Chains           []int                          // Postprocessing chains
+	MaxAnswers       int                            // Maximum number of answers to return
+	NumReads         int                            // Number of samples to take
+	NumSpinReversals int                            // Number of spin-reversal transformations to perform
+	Postprocess      Postprocessing                 // Type of classical postprocessing to perform
+	ProgTherm        int                            // Post-programming thermalization time in microseconds
+	ReadoutTherm     int                            // Post-readout thermalization time in microseconds
+	AnnealOffsets    []float64                      // Per-qubit amount to offset annealing paths
 }
 
-// NewSwSampleSolverParameters returns a new SwSampleSolverParameters.
-func NewSwSampleSolverParameters() *SwSampleSolverParameters {
-	return &SwSampleSolverParameters{
-		sssp: C.SAPI_SW_SAMPLE_SOLVER_DEFAULT_PARAMETERS,
-	}
-}
-
-// NewSwOptimizeSolverParameters returns a new SwOptimizeSolverParameters.
-func NewSwOptimizeSolverParameters() *SwOptimizeSolverParameters {
-	return &SwOptimizeSolverParameters{
-		sosp: C.SAPI_SW_OPTIMIZE_SOLVER_DEFAULT_PARAMETERS,
-	}
-}
-
-// NewSwHeuristicSolverParameters returns a new SwHeuristicSolverParameters.
-func NewSwHeuristicSolverParameters() *SwHeuristicSolverParameters {
-	return &SwHeuristicSolverParameters{
-		shsp: C.SAPI_SW_HEURISTIC_SOLVER_DEFAULT_PARAMETERS,
-	}
-}
-
-// NewQuantumSolverParameters returns a new QuantumSolverParameters.
-func NewQuantumSolverParameters() *QuantumSolverParameters {
+// newQuantumSolverParameters returns a new QuantumSolverParameters.
+func newQuantumSolverParameters() *QuantumSolverParameters {
+	cQsp := C.SAPI_QUANTUM_SOLVER_DEFAULT_PARAMETERS
+	cIntToBool := map[C.int]bool{0: false, 1: true}
 	return &QuantumSolverParameters{
-		qsp: C.SAPI_QUANTUM_SOLVER_DEFAULT_PARAMETERS,
+		qsp:              cQsp,
+		AnswerMode:       SolverParameterAnswerMode(cQsp.answer_mode),
+		AutoScale:        cIntToBool[cQsp.auto_scale],
+		Beta:             float64(cQsp.beta),
+		Chains:           nil,
+		MaxAnswers:       int(cQsp.max_answers),
+		NumReads:         int(cQsp.num_reads),
+		NumSpinReversals: int(cQsp.num_spin_reversal_transforms),
+		Postprocess:      Postprocessing(cQsp.postprocess),
+		ProgTherm:        int(cQsp.programming_thermalization),
+		ReadoutTherm:     int(cQsp.readout_thermalization),
+		AnnealOffsets:    nil,
 	}
 }
 
-// SetAnnealOffsets specifies a per-qubit annealing offset to use.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetAnnealOffsets(ao []float64) {
-}
-
-// SetAnnealOffsets specifies a per-qubit annealing offset to use.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetAnnealOffsets(ao []float64) {
-}
-
-// SetAnnealOffsets specifies a per-qubit annealing offset to use.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetAnnealOffsets(ao []float64) {
-}
-
-// SetAnnealOffsets specifies a per-qubit annealing offset to use.
-func (p *QuantumSolverParameters) SetAnnealOffsets(ao []float64) {
-	if len(ao) == 0 {
-		p.qsp.anneal_offsets = nil
-		return
-	}
-	na := C.size_t(len(ao))
-	ofs := (*C.sapi_AnnealOffsets)(C.malloc(C.sizeof_sapi_AnnealOffsets))
-	ofs.len = na
-	elts := C.malloc(C.sizeof_double * na)
-	ePtr := (*[1 << 30]C.double)(elts)[:na:na]
-	for i, o := range ao {
-		ePtr[i] = C.double(o)
-	}
-	ofs.elements = (*C.double)(elts)
-	p.qsp.anneal_offsets = ofs
-}
-
-// SetAnnealingTime specifies the annealing time in microseconds.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetAnnealingTime(at int) {
-}
-
-// SetAnnealingTime specifies the annealing time in microseconds.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetAnnealingTime(at int) {
-}
-
-// SetAnnealingTime specifies the annealing time in microseconds.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetAnnealingTime(at int) {
-}
-
-// SetAnnealingTime specifies the annealing time in microseconds.
-func (p *QuantumSolverParameters) SetAnnealingTime(at int) {
-	p.qsp.annealing_time = C.int(at)
-}
-
-// SetAnswerMode specifies the form in which we want to see the solver's output.
-func (p *SwSampleSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
-	p.sssp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
-}
-
-// SetAnswerMode specifies the form in which we want to see the solver's output.
-func (p *SwOptimizeSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
-	p.sosp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
-}
-
-// SetAnswerMode specifies the form in which we want to see the solver's output.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
-}
-
-// SetAnswerMode specifies the form in which we want to see the solver's output.
-func (p *QuantumSolverParameters) SetAnswerMode(m SolverParameterAnswerMode) {
-	p.qsp.answer_mode = C.sapi_SolverParameterAnswerMode(m)
-}
-
-// SetAutoScale specifies whether coefficients should be automatically scaled.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetAutoScale(y bool) {
-}
-
-// SetAutoScale specifies whether coefficients should be automatically scaled.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetAutoScale(y bool) {
-}
-
-// SetAutoScale specifies whether coefficients should be automatically scaled.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetAutoScale(y bool) {
-}
-
-// SetAutoScale specifies whether coefficients should be automatically scaled.
-func (p *QuantumSolverParameters) SetAutoScale(y bool) {
-	if y {
-		p.qsp.auto_scale = 1
-	} else {
-		p.qsp.auto_scale = 0
-	}
-}
-
-// SetBeta specifies the Boltzmann distribution parameter.
-func (p *SwSampleSolverParameters) SetBeta(b float64) {
-	p.sssp.beta = C.double(b)
-}
-
-// SetBeta specifies the Boltzmann distribution parameter.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetBeta(b float64) {
-}
-
-// SetBeta specifies the Boltzmann distribution parameter.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetBeta(b float64) {
-}
-
-// SetBeta specifies the Boltzmann distribution parameter.
-func (p *QuantumSolverParameters) SetBeta(b float64) {
-	p.qsp.beta = C.double(b)
-}
-
-// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
-// contains qubit i; -1 means a singleton chain.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetChains(cs []int) {
-}
-
-// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
-// contains qubit i; -1 means a singleton chain.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetChains(cs []int) {
-}
-
-// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
-// contains qubit i; -1 means a singleton chain.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetChains(cs []int) {
-}
-
-// SetChains indicates where all the chains lie.  The value of c[i] means c[i]
-// contains qubit i; -1 means a singleton chain.
-func (p *QuantumSolverParameters) SetChains(cs []int) {
+// convertChainsToGo converts the list of chains from Go to C.
+func (p *QuantumSolverParameters) convertChainsToGo() {
+	cs := p.Chains
 	if len(cs) == 0 {
 		p.qsp.chains = nil
 		return
@@ -278,184 +244,43 @@ func (p *QuantumSolverParameters) SetChains(cs []int) {
 	p.qsp.chains = chains
 }
 
-// SetMaxAnswers specifies the maximum number of answers the solver should
-// return.
-func (p *SwSampleSolverParameters) SetMaxAnswers(ma int) {
-	p.sssp.max_answers = C.int(ma)
+// convertAnnealOffsetsToGo converts the list of per-qubit anneal offsets from
+// C to Go.
+func (p *QuantumSolverParameters) convertAnnealOffsetsToGo() {
+	ao := p.AnnealOffsets
+	if len(ao) == 0 {
+		p.qsp.anneal_offsets = nil
+		return
+	}
+	na := C.size_t(len(ao))
+	ofs := (*C.sapi_AnnealOffsets)(C.malloc(C.sizeof_sapi_AnnealOffsets))
+	ofs.len = na
+	elts := C.malloc(C.sizeof_double * na)
+	ePtr := (*[1 << 30]C.double)(elts)[:na:na]
+	for i, o := range ao {
+		ePtr[i] = C.double(o)
+	}
+	ofs.elements = (*C.double)(elts)
+	p.qsp.anneal_offsets = ofs
 }
 
-// SetMaxAnswers specifies the maximum number of answers the solver should
-// return.
-func (p *SwOptimizeSolverParameters) SetMaxAnswers(ma int) {
-	p.sosp.max_answers = C.int(ma)
-}
-
-// SetMaxAnswers specifies the maximum number of answers the solver should
-// return.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetMaxAnswers(ma int) {
-}
-
-// SetMaxAnswers specifies the maximum number of answers the solver should
-// return.
-func (p *QuantumSolverParameters) SetMaxAnswers(ma int) {
-	p.qsp.max_answers = C.int(ma)
-}
-
-// SetNumReads specifies the number of reads to take.
-func (p *SwSampleSolverParameters) SetNumReads(nr int) {
-	p.sssp.num_reads = C.int(nr)
-}
-
-// SetNumReads specifies the number of reads to take.
-func (p *SwOptimizeSolverParameters) SetNumReads(nr int) {
-	p.sosp.num_reads = C.int(nr)
-}
-
-// SetNumReads specifies the number of reads to take.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetNumReads(nr int) {
-}
-
-// SetNumReads specifies the number of reads to take.
-func (p *QuantumSolverParameters) SetNumReads(nr int) {
-	p.qsp.num_reads = C.int(nr)
-}
-
-// SetNumSpinReversals specifies the number of spin-reversal transformations to
-// perform.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetNumSpinReversals(sr int) {
-}
-
-// SetNumSpinReversals specifies the number of spin-reversal transformations to
-// perform.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetNumSpinReversals(sr int) {
-}
-
-// SetNumSpinReversals specifies the number of spin-reversal transformations to
-// perform.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetNumSpinReversals(sr int) {
-}
-
-// SetNumSpinReversals specifies the number of spin-reversal transformations to
-// perform.
-func (p *QuantumSolverParameters) SetNumSpinReversals(sr int) {
-	p.qsp.num_spin_reversal_transforms = C.int(sr)
-}
-
-// SetPostprocessing requests the the solver's output be postprocessed.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetPostprocessing(pp Postprocessing) {
-}
-
-// SetPostprocessing requests the the solver's output be postprocessed.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetPostprocessing(pp Postprocessing) {
-}
-
-// SetPostprocessing requests the the solver's output be postprocessed.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetPostprocessing(pp Postprocessing) {
-}
-
-// SetPostprocessing requests the the solver's output be postprocessed.
-func (p *QuantumSolverParameters) SetPostprocessing(pp Postprocessing) {
-	p.qsp.postprocess = C.sapi_Postprocess(pp)
-}
-
-// SetProgTherm specifies the time in microseconds to wait after programming
-// the quantum processor in order for it to cool back to base temperature.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetProgTherm(pt int) {
-}
-
-// SetProgTherm specifies the time in microseconds to wait after programming
-// the quantum processor in order for it to cool back to base temperature.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetProgTherm(pt int) {
-}
-
-// SetProgTherm specifies the time in microseconds to wait after programming
-// the quantum processor in order for it to cool back to base temperature.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetProgTherm(pt int) {
-}
-
-// SetProgTherm specifies the time in microseconds to wait after programming
-// the quantum processor in order for it to cool back to base temperature.
-func (p *QuantumSolverParameters) SetProgTherm(pt int) {
-	p.qsp.programming_thermalization = C.int(pt)
-}
-
-// SetRandomSeed sets a seed for the random-number generator.
-func (p *SwSampleSolverParameters) SetRandomSeed(rs uint) {
-	p.sssp.random_seed = C.uint(rs)
-	p.sssp.use_random_seed = 1
-}
-
-// SetRandomSeed sets a seed for the random-number generator.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetRandomSeed(rs uint) {
-}
-
-// SetRandomSeed sets a seed for the random-number generator.
-func (p *SwHeuristicSolverParameters) SetRandomSeed(rs uint) {
-	p.shsp.random_seed = C.uint(rs)
-	p.shsp.use_random_seed = 1
-}
-
-// SetRandomSeed sets a seed for the random-number generator.
-// For QuantumSolverParameters, this method is a no-op.
-func (p *QuantumSolverParameters) SetRandomSeed(rs uint) {
-}
-
-// SetReadoutTherm specifies the time in microseconds to wait after each state
-// is read from the quantum processor in order for it to cool back to base
-// temperature.
-// For SwSampleSolverParameters, this method is a no-op.
-func (p *SwSampleSolverParameters) SetReadoutTherm(pt int) {
-}
-
-// SetReadoutTherm specifies the time in microseconds to wait after each state
-// is read from the quantum processor in order for it to cool back to base
-// temperature.
-// For SwOptimizeSolverParameters, this method is a no-op.
-func (p *SwOptimizeSolverParameters) SetReadoutTherm(pt int) {
-}
-
-// SetReadoutTherm specifies the time in microseconds to wait after each state
-// is read from the quantum processor in order for it to cool back to base
-// temperature.
-// For SwHeuristicSolverParameters, this method is a no-op.
-func (p *SwHeuristicSolverParameters) SetReadoutTherm(pt int) {
-}
-
-// SetReadoutTherm specifies the time in microseconds to wait after each state
-// is read from the quantum processor in order for it to cool back to base
-// temperature.
-func (p *QuantumSolverParameters) SetReadoutTherm(pt int) {
-	p.qsp.readout_thermalization = C.int(pt)
-}
-
-// ToC converts a SwSampleSolverParameters to a sapi_SolverParameters.
-func (p *SwSampleSolverParameters) ToC() *C.sapi_SolverParameters {
-	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.sssp))
-}
-
-// ToC converts a SwOptimizeSolverParameters to a sapi_SolverParameters.
-func (p *SwOptimizeSolverParameters) ToC() *C.sapi_SolverParameters {
-	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.sosp))
-}
-
-// ToC converts a SwHeuristicSolverParameters to a sapi_SolverParameters.
-func (p *SwHeuristicSolverParameters) ToC() *C.sapi_SolverParameters {
-	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.shsp))
-}
-
-// ToC converts a QuantumSolverParameters to a sapi_SolverParameters.
-func (p *QuantumSolverParameters) ToC() *C.sapi_SolverParameters {
+// ToCSolverParameters converts a QuantumSolverParameters to a
+// sapi_SolverParameters.
+func (p *QuantumSolverParameters) ToCSolverParameters() *C.sapi_SolverParameters {
+	p.qsp.answer_mode = C.sapi_SolverParameterAnswerMode(p.AnswerMode)
+	if p.AutoScale {
+		p.qsp.auto_scale = 1
+	} else {
+		p.qsp.auto_scale = 0
+	}
+	p.qsp.beta = C.double(p.Beta)
+	p.convertChainsToGo()
+	p.qsp.max_answers = C.int(p.MaxAnswers)
+	p.qsp.num_reads = C.int(p.NumReads)
+	p.qsp.num_spin_reversal_transforms = C.int(p.NumSpinReversals)
+	p.qsp.postprocess = C.sapi_Postprocess(p.Postprocess)
+	p.qsp.programming_thermalization = C.int(p.ProgTherm)
+	p.qsp.readout_thermalization = C.int(p.ReadoutTherm)
+	p.convertAnnealOffsetsToGo()
 	return (*C.sapi_SolverParameters)(unsafe.Pointer(&p.qsp))
 }

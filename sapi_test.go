@@ -269,9 +269,16 @@ func testAND(t *testing.T, ising bool, solver *sapi.Solver,
 		prob[7] = sapi.ProblemEntry{I: q3, J: q0, Value: -2.0}
 	}
 
-	// Set the solver NumReads parameter to a large value.
+	// Set the solver's NumReads parameter to a large value.
 	sp := solver.NewSolverParameters()
-	sp.SetNumReads(1000)
+	switch sp := sp.(type) {
+	case *sapi.SwOptimizeSolverParameters:
+		sp.NumReads = 1000
+	case *sapi.SwSampleSolverParameters:
+		sp.NumReads = 1000
+	case *sapi.QuantumSolverParameters:
+		sp.NumReads = 1000
+	}
 
 	// Solve the problem.
 	ir, err := solverFunc(prob, sp)
@@ -319,7 +326,7 @@ func TestLocalSolveIsing(t *testing.T) {
 	testAND(t, true, solver, solver.SolveIsing)
 }
 
-// TestLocalSolveIsing ensures we can solve an Ising-model problem on a remote
+// TestRemoteSolveIsing ensures we can solve an Ising-model problem on a remote
 // solver.
 func TestRemoteSolveIsing(t *testing.T) {
 	_, solver := prepareRemote(t)
