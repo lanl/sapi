@@ -223,7 +223,10 @@ func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
 	}
 
 	// Convert the resulting tallies from C to Go.
-	occurs := cIntsToGo(result.num_occurrences, ns)
+	var occurs []int
+	if result.num_occurrences != nil {
+		occurs = cIntsToGo(result.num_occurrences, ns)
+	}
 
 	// Free the C data and return the Go result.
 	C.sapi_freeIsingResult(result)
