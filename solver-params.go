@@ -235,12 +235,7 @@ func (p *QuantumSolverParameters) convertChainsToGo() {
 	nc := C.size_t(len(cs))
 	chains := (*C.sapi_Chains)(C.malloc(C.sizeof_sapi_Chains))
 	chains.len = nc
-	elts := C.malloc(C.sizeof_int * nc)
-	ePtr := (*[1 << 30]C.int)(elts)[:nc:nc]
-	for i, c := range cs {
-		ePtr[i] = C.int(c)
-	}
-	chains.elements = (*C.int)(elts)
+	chains.elements = goIntsToC(cs)
 	p.qsp.chains = chains
 }
 

@@ -55,6 +55,16 @@ type IsingRangeProperties struct {
 	JMax float64
 }
 
+// toC converts an IsingRangeProperties to a C sapi_IsingRangeProperties.
+func (irp *IsingRangeProperties) toC() *C.sapi_IsingRangeProperties {
+	var cIrp C.sapi_IsingRangeProperties
+	cIrp.h_min = C.double(irp.HMin)
+	cIrp.h_max = C.double(irp.HMax)
+	cIrp.j_min = C.double(irp.JMin)
+	cIrp.j_max = C.double(irp.JMax)
+	return &cIrp
+}
+
 // A QuantumSolverProperties records the available qubits and couplers.
 type QuantumSolverProperties struct {
 	NumQubits int      // Total number of qubits, both working and non-working, in the processor

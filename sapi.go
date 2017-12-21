@@ -77,6 +77,17 @@ func cIntsToGo(cArray *C.int, n int) []int {
 	return a
 }
 
+// goIntsToC converts a Go slice of ints to a C array of ints.
+func goIntsToC(xs []int) *C.int {
+	n := C.size_t(len(xs))
+	elts := C.malloc(C.sizeof_int * n)
+	ePtr := (*[1 << 30]C.int)(elts)[:n:n]
+	for i, x := range xs {
+		ePtr[i] = C.int(x)
+	}
+	return (*C.int)(elts)
+}
+
 // cStringsToGo converts a C array of strings to a Go slice.
 func cStringsToGo(cArray **C.char, n int) []string {
 	a := make([]string, n)
