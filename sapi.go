@@ -97,3 +97,34 @@ func cStringsToGo(cArray **C.char, n int) []string {
 	}
 	return a
 }
+
+// cInt8MatrixToGo converts a flattened 2-D matrix of C ints to a Go slice of
+// slices of int8s.
+func cInt8MatrixToGo(cArray *C.int, nr, nc int) [][]int8 {
+	aPtr := (*[1 << 30]C.int)(unsafe.Pointer(cArray))[:nr*nc : nr*nc]
+	array := make([][]int8, nr)
+	for i := range array {
+		array[i] = make([]int8, nc)
+		for j := range array[i] {
+			array[i][j] = int8(aPtr[i*nc+j])
+		}
+	}
+	return array
+}
+
+// int8MatrixtoC converts a Go slice of slices of int8s to a flattened 2-D
+// matrix of C ints.
+func int8MatrixtoC(array [][]int8) *C.int {
+	nr := len(array)
+	nc := len(array[0])
+	cArray := C.malloc(C.sizeof_int * C.size_t(nr*nc))
+	aPtr := (*[1 << 30]C.int)(unsafe.Pointer(cArray))[:nr*nc : nr*nc]
+	i := 0
+	for _, row := range array {
+		for _, v := range row {
+			aPtr[i] = C.int(v)
+			i++
+		}
+	}
+	return (*C.int)(cArray)
+}

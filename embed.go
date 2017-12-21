@@ -63,6 +63,14 @@ func NewFindEmbeddingParameters() *FindEmbeddingParameters {
 // (or -1 for no logical variable).
 type Embeddings []int
 
+// toC converts an Embeddings to a C sapi_Embeddings.
+func (emb Embeddings) toC() *C.sapi_Embeddings {
+	return &C.sapi_Embeddings{
+		elements: goIntsToC(emb),
+		len:      C.size_t(len(emb)),
+	}
+}
+
 // FindEmbedding attempts to find an embedding of a Ising/QUBO problem in a
 // graph. This function is entirely heuristic: failure to return an embedding
 // does not prove that no embedding exists.
@@ -99,13 +107,10 @@ type EmbedProblemResult struct {
 // physical topology.
 func EmbedProblem(pr Problem, emb Embeddings, adj Problem, clean, smear bool,
 	ranges IsingRangeProperties) (*EmbedProblemResult, error) {
-	// Convert each argument from C to Go.
+	// Convert each argument from Go to C.
 	cPr := pr.toC()
 	cAdj := pr.toC()
-	cEmb := &C.sapi_Embeddings{
-		elements: goIntsToC(emb),
-		len:      C.size_t(len(emb)),
-	}
+	cEmb := emb.toC()
 	var cClean, cSmear C.int
 	if clean {
 		cClean = 1
@@ -129,4 +134,44 @@ func EmbedProblem(pr Problem, emb Embeddings, adj Problem, clean, smear bool,
 		Emb:  cIntsToGo(cResult.embeddings.elements, int(cResult.embeddings.len)),
 	}
 	return result, nil
+}
+
+// BrokenChains specifies how broken chains should be handled.
+type BrokenChains int
+
+// These are the valid values for a BrokenChains variable.
+const (
+	BrokenChainsMinimizeEnergy BrokenChains = C.SAPI_BROKEN_CHAINS_MINIMIZE_ENERGY
+	BrokenChainsVote                        = C.SAPI_BROKEN_CHAINS_VOTE
+	BrokenChainsDiscard                     = C.SAPI_BROKEN_CHAINS_DISCARD
+	BrokenChainsWeightedRandom              = C.SAPI_BROKEN_CHAINS_WEIGHTED_RANDOM
+)
+
+// UnembedAnswer maps an answer from using physical qubit numbers back to
+// logical qubit numbers.
+func UnembedAnswer(solns [][]int8, emb Embeddings, broken BrokenChains, prob Problem) ([][]int8, error) {
+	// Convert each argument from Go to C.
+	cSolns := int8MatrixtoC(solns)
+	cEmb := emb.toC()
+	cBroken := C.sapi_BrokenChains(broken)
+	cProb := prob.toC()
+
+	// Determine the number of variables (logical qubits).
+	vars := make(map[int]bool, len(emb))
+	for _, v := range emb {
+		vars[v] = true
+	}
+	nv := len(vars)
+
+	// Invoke the C function.
+	cNew := (*C.int)(C.malloc(C.sizeof_int * C.size_t(len(solns)*nv)))
+	var cNnew C.size_t
+	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
+	if ret := C.sapi_unembedAnswer(cSolns, C.size_t(len(solns[0])), C.size_t(len(solns)),
+		cEmb, cBroken, cProb, cNew, &cNnew, &cErr[0]); ret != C.SAPI_OK {
+		return nil, newErrorf(ret, "%s", C.GoString(&cErr[0]))
+	}
+
+	// Convert the result from C to Go.
+	return cInt8MatrixToGo(cNew, int(cNnew), nv), nil
 }

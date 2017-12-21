@@ -216,14 +216,7 @@ func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
 	// Convert the resulting solutions from C to Go.
 	ns := int(result.num_solutions)
 	sl := int(result.solution_len)
-	sPtr := (*[1 << 30]C.int)(unsafe.Pointer(result.solutions))[:ns*sl : ns*sl]
-	solns := make([][]int8, ns)
-	for i := range solns {
-		solns[i] = make([]int8, sl)
-		for j := range solns[i] {
-			solns[i][j] = int8(sPtr[i*sl+j])
-		}
-	}
+	solns := cInt8MatrixToGo(result.solutions, ns, sl)
 
 	// Convert the resulting energies from C to Go.
 	ePtr := (*[1 << 30]C.double)(unsafe.Pointer(result.energies))[:ns:ns]
