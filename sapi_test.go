@@ -237,8 +237,44 @@ func findFourCycle(s *sapi.Solver) []int {
 	return nil
 }
 
-// Solve for all valid rows in an AND truth table.
-func testAND(t *testing.T, ising bool, solver *sapi.Solver,
+// verifyAnd ensures that the results of an AND are correct.
+func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
+	// Ensure that each solution is either correct or sits at high enough
+	// energy that we know it's incorrect.
+	var correctEnergy float64
+	if ising {
+		correctEnergy = -1.75
+	} else {
+		correctEnergy = 0.0
+	}
+	q0, q1, q2, q3 := square[0], square[1], square[2], square[3]
+	s2b := map[int8]bool{-1: false, +1: true}
+	for i, soln := range ir.Solutions {
+		// Extract the AND inputs and output.
+		a := s2b[soln[q0]]
+		aAlt := s2b[soln[q1]]
+		b := s2b[soln[q2]]
+		y := s2b[soln[q3]]
+
+		// Skip high-energy solutions.
+		if ir.Energies[i] > correctEnergy {
+			t.Logf("Ignoring high-energy (%.2f) solution %v=%v AND %v = %v",
+				ir.Energies[i], a, aAlt, b, y)
+			continue
+		}
+
+		// Ensure the solutions that should be valid are indeed so.
+		if a != aAlt {
+			t.Fatalf("Expected qubits %d and %d to be equal in solution %d", q0, q1, i+1)
+		}
+		if (a && b) != y {
+			t.Fatalf("Saw %v AND %v = %v in solution %d", a, b, y, i+1)
+		}
+	}
+}
+
+// testAnd solves for all valid rows in an AND truth table.
+func testAnd(t *testing.T, ising bool, solver *sapi.Solver,
 	solverFunc func(sapi.Problem, sapi.SolverParameters) (sapi.IsingResult, error)) {
 	// Find a set of qubits we can use.
 	square := findFourCycle(solver)
@@ -288,59 +324,31 @@ func testAND(t *testing.T, ising bool, solver *sapi.Solver,
 
 	// Ensure that each solution is either correct or sits at high enough
 	// energy that we know it's incorrect.
-	var correctEnergy float64
-	if ising {
-		correctEnergy = -1.75
-	} else {
-		correctEnergy = 0.0
-	}
-	s2b := map[int8]bool{-1: false, +1: true}
-	for i, soln := range ir.Solutions {
-		// Extract the AND inputs and output.
-		a := s2b[soln[q0]]
-		aAlt := s2b[soln[q1]]
-		b := s2b[soln[q2]]
-		y := s2b[soln[q3]]
-
-		// Skip high-energy solutions.
-		if ir.Energies[i] > correctEnergy {
-			t.Logf("Ignoring high-energy (%.2f) solution %v=%v AND %v = %v",
-				ir.Energies[i], a, aAlt, b, y)
-			continue
-		}
-
-		// Ensure the solutions that should be valid are indeed so.
-		if a != aAlt {
-			t.Fatalf("Expected qubits %d and %d to be equal in solution %d", q0, q1, i+1)
-		}
-		if (a && b) != y {
-			t.Fatalf("Saw %v AND %v = %v in solution %d", a, b, y, i+1)
-		}
-	}
+	verifyAnd(t, ising, square, ir)
 }
 
 // TestLocalSolveIsing ensures we can solve an Ising-model problem on a local
 // solver.
 func TestLocalSolveIsing(t *testing.T) {
 	_, solver := prepareLocal(t)
-	testAND(t, true, solver, solver.SolveIsing)
+	testAnd(t, true, solver, solver.SolveIsing)
 }
 
 // TestRemoteSolveIsing ensures we can solve an Ising-model problem on a remote
 // solver.
 func TestRemoteSolveIsing(t *testing.T) {
 	_, solver := prepareRemote(t)
-	testAND(t, true, solver, solver.SolveIsing)
+	testAnd(t, true, solver, solver.SolveIsing)
 }
 
 // TestLocalSolveQubo ensures we can solve an QUBO problem on a local solver.
 func TestLocalSolveQubo(t *testing.T) {
 	_, solver := prepareLocal(t)
-	testAND(t, false, solver, solver.SolveQubo)
+	testAnd(t, false, solver, solver.SolveQubo)
 }
 
 // TestLocalSolveQubo ensures we can solve a QUBO problem on a remote solver.
 func TestRemoteSolveQubo(t *testing.T) {
 	_, solver := prepareRemote(t)
-	testAND(t, false, solver, solver.SolveQubo)
+	testAnd(t, false, solver, solver.SolveQubo)
 }
