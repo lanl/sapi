@@ -62,6 +62,17 @@ func problemFromC(csp *C.sapi_Problem) Problem {
 	return prob
 }
 
+// countQubits returns a tally of the number of unique qubits referenced by a
+// Problem.
+func (p Problem) countQubits() int {
+	seen := make(map[int]struct{}, len(p))
+	for _, pe := range p {
+		seen[pe.I] = struct{}{}
+		seen[pe.J] = struct{}{}
+	}
+	return len(seen)
+}
+
 // ChimeraAdjacency constructs the adjacency matrix for an arbitrary Chimera
 // graph.
 func ChimeraAdjacency(m, n, l int) (Problem, error) {

@@ -273,7 +273,8 @@ func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
 	}
 }
 
-// testAnd solves for all valid rows in an AND truth table.
+// testAnd solves for all valid rows in an AND truth table, designed to fit
+// within a Chimera graph.
 func testAnd(t *testing.T, ising bool, solver *sapi.Solver,
 	solverFunc func(sapi.Problem, sapi.SolverParameters) (sapi.IsingResult, error)) {
 	// Find a set of qubits we can use.
@@ -351,4 +352,102 @@ func TestLocalSolveQubo(t *testing.T) {
 func TestRemoteSolveQubo(t *testing.T) {
 	_, solver := prepareRemote(t)
 	testAnd(t, false, solver, solver.SolveQubo)
+}
+
+// testEmbedding ensures we can embed an XOR problem in a solver's topology,
+// solve it, and get the correct answer.
+func testEmbedding(t *testing.T, solver *sapi.Solver) {
+	// Define an XOR function, not embedded in a Chimera graph.
+	prob := make(sapi.Problem, 10)
+	prob[0] = sapi.ProblemEntry{I: 0, J: 0, Value: 0.5}
+	prob[1] = sapi.ProblemEntry{I: 1, J: 1, Value: 0.5}
+	prob[2] = sapi.ProblemEntry{I: 2, J: 2, Value: 0.5}
+	prob[3] = sapi.ProblemEntry{I: 3, J: 3, Value: -1.0}
+	prob[4] = sapi.ProblemEntry{I: 0, J: 1, Value: 0.5}
+	prob[5] = sapi.ProblemEntry{I: 0, J: 2, Value: 0.5}
+	prob[6] = sapi.ProblemEntry{I: 0, J: 3, Value: -1.0}
+	prob[7] = sapi.ProblemEntry{I: 1, J: 2, Value: 0.5}
+	prob[8] = sapi.ProblemEntry{I: 1, J: 3, Value: -1.0}
+	prob[9] = sapi.ProblemEntry{I: 2, J: 3, Value: -1.0}
+
+	// Retrieve the solver's adjacency graph and coefficient ranges.
+	adj, err := solver.HardwareAdjacency()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prop := solver.GetProperties()
+	ir := prop.IsingRanges
+	if ir == nil {
+		ir = &sapi.IsingRangeProperties{
+			HMin: -1,
+			HMax: 1,
+			JMin: -1,
+			JMax: 1,
+		}
+	}
+
+	// Run the heuristic embedder.
+	fep := sapi.NewFindEmbeddingParameters()
+	fep.Verbose = false
+	emb, err := sapi.FindEmbedding(prob, adj, fep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	epr, err := sapi.EmbedProblem(prob, emb, adj, true, true, *ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set the solver's NumReads parameter to a large value.
+	sp := solver.NewSolverParameters()
+	switch sp := sp.(type) {
+	case *sapi.SwOptimizeSolverParameters:
+		sp.NumReads = 1000
+	case *sapi.SwSampleSolverParameters:
+		sp.NumReads = 1000
+	case *sapi.QuantumSolverParameters:
+		sp.NumReads = 1000
+	}
+
+	// Solve the problem.
+	res, err := solver.SolveIsing(epr.Prob, sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Unembed the answer.
+	solns, err := sapi.UnembedAnswer(res.Solutions, epr.Emb,
+		sapi.BrokenChainsMinimizeEnergy, prob)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Validate the solutions.
+	const correctEnergy = -2.0
+	for i, soln := range solns {
+		a, b, y := (soln[0]+1)/2, (soln[1]+1)/2, (soln[2]+1)/2
+		e := res.Energies[i]
+		if e > correctEnergy {
+			t.Logf("Ignoring high-energy (%.2f) solution %v XOR %v = %v",
+				e, a == 1, b == 1, y == 1)
+			continue
+		}
+		if (a ^ b) != y {
+			t.Fatalf("Saw %v XOR %v = %v in solution %d (energy = %f)", a == 1, b == 1, y == 1, i+1, e)
+		}
+	}
+}
+
+// TestLocalEmbedding ensures we can embed a problem in a local solver's
+// topology, solve it, and get the correct answer.
+func TestLocalEmbedding(t *testing.T) {
+	_, solver := prepareLocal(t)
+	testEmbedding(t, solver)
+}
+
+// TestRemoteEmbedding ensures we can embed a problem in a remote solver's
+// topology, solve it, and get the correct answer.
+func TestRemoteEmbedding(t *testing.T) {
+	_, solver := prepareRemote(t)
+	testEmbedding(t, solver)
 }

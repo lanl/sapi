@@ -14,21 +14,21 @@ import (
 
 // FindEmbeddingParameters encapsulate the parameters for FindEmbedding.
 type FindEmbeddingParameters struct {
-	FastEmbedding    bool    // Try to get an embedding quickly, without worrying about chain length
-	MaxNoImprovement int     // Number of rounds of the algorithm to try from the current solution with no improvement
-	UseRandomSeed    bool    // Honor the RandomSeed field (below)
-	RandomSeed       uint    // Seed for the random number generator
-	Timeout          float64 // Give up after this many seconds
-	Tries            int     // Give up after this many retry attempts
-	Verbose          bool    // Output verbose information to standard output
-	notUsed          int     // Not used, but prevents the caller from bypassing NewFindEmbeddingParameters
+	cFep             C.sapi_FindEmbeddingParameters // C version of FindEmbeddingParameters
+	FastEmbedding    bool                           // Try to get an embedding quickly, without worrying about chain length
+	MaxNoImprovement int                            // Number of rounds of the algorithm to try from the current solution with no improvement
+	UseRandomSeed    bool                           // Honor the RandomSeed field (below)
+	RandomSeed       uint                           // Seed for the random number generator
+	Timeout          float64                        // Give up after this many seconds
+	Tries            int                            // Give up after this many retry attempts
+	Verbose          bool                           // Output verbose information to standard output
 }
 
 // toC converts a Go FindEmbeddingParameters to a C
 // sapi_FindEmbeddingParameters.
 func (fep *FindEmbeddingParameters) toC() *C.sapi_FindEmbeddingParameters {
-	var cFep C.sapi_FindEmbeddingParameters
 	bool2cint := map[bool]C.int{true: 1, false: 0}
+	cFep := &fep.cFep
 	cFep.fast_embedding = bool2cint[fep.FastEmbedding]
 	cFep.max_no_improvement = C.int(fep.MaxNoImprovement)
 	cFep.use_random_seed = bool2cint[fep.UseRandomSeed]
@@ -36,13 +36,14 @@ func (fep *FindEmbeddingParameters) toC() *C.sapi_FindEmbeddingParameters {
 	cFep.timeout = C.double(fep.Timeout)
 	cFep.tries = C.int(fep.Tries)
 	cFep.verbose = bool2cint[fep.Verbose]
-	return &cFep
+	return cFep
 }
 
 // findEmbeddingParametersFromC converts a C sapi_FindEmbeddingParameters to a
 // Go FindEmbeddingParameters.
 func findEmbeddingParametersFromC(cFep *C.sapi_FindEmbeddingParameters) *FindEmbeddingParameters {
 	var fep FindEmbeddingParameters
+	fep.cFep = *cFep
 	fep.FastEmbedding = cFep.fast_embedding != 0
 	fep.MaxNoImprovement = int(cFep.max_no_improvement)
 	fep.UseRandomSeed = cFep.use_random_seed != 0
@@ -98,9 +99,9 @@ func FindEmbedding(pr, adj Problem, fep *FindEmbeddingParameters) (Embeddings, e
 // An EmbedProblemResult represents the result of an embedding of a problem in
 // a physical topology.
 type EmbedProblemResult struct {
-	Prob Problem    // Embedded original problem
+	Prob Problem    // Embedded problem
 	JC   Problem    // Chain edges (J values coupling vertices representing the same logical variable)
-	Emb  Embeddings // Original embeddings, possibly modified by cleaning or smearing
+	Emb  Embeddings // Embeddings, possibly modified by cleaning or smearing
 }
 
 // EmbedProblem uses the result of FindEmbedding to embed a problem in the
@@ -109,7 +110,7 @@ func EmbedProblem(pr Problem, emb Embeddings, adj Problem, clean, smear bool,
 	ranges IsingRangeProperties) (*EmbedProblemResult, error) {
 	// Convert each argument from Go to C.
 	cPr := pr.toC()
-	cAdj := pr.toC()
+	cAdj := adj.toC()
 	cEmb := emb.toC()
 	var cClean, cSmear C.int
 	if clean {
@@ -156,14 +157,8 @@ func UnembedAnswer(solns [][]int8, emb Embeddings, broken BrokenChains, prob Pro
 	cBroken := C.sapi_BrokenChains(broken)
 	cProb := prob.toC()
 
-	// Determine the number of variables (logical qubits).
-	vars := make(map[int]bool, len(emb))
-	for _, v := range emb {
-		vars[v] = true
-	}
-	nv := len(vars)
-
 	// Invoke the C function.
+	nv := prob.countQubits()
 	cNew := (*C.int)(C.malloc(C.sizeof_int * C.size_t(len(solns)*nv)))
 	var cNnew C.size_t
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
