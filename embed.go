@@ -93,6 +93,7 @@ func FindEmbedding(pr, adj Problem, fep *FindEmbeddingParameters) (Embeddings, e
 	for i, e := range ePtr {
 		embed[i] = int(e)
 	}
+	C.sapi_freeEmbeddings(cEmbed)
 	return embed, nil
 }
 
@@ -134,6 +135,7 @@ func EmbedProblem(pr Problem, emb Embeddings, adj Problem, clean, smear bool,
 		JC:   problemFromC(&cResult.jc),
 		Emb:  cIntsToGo(cResult.embeddings.elements, int(cResult.embeddings.len)),
 	}
+	C.sapi_freeEmbedProblemResult(cResult)
 	return result, nil
 }
 
