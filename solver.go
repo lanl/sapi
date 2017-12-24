@@ -11,6 +11,7 @@ import "C"
 
 import (
 	"runtime"
+	"time"
 	"unsafe"
 )
 
@@ -202,11 +203,25 @@ func (s *Solver) HardwareAdjacency() (Problem, error) {
 	return problemFromC(cProb), nil
 }
 
+// A Timing tracks where solving time was spent.  Fields deprecated by SAPI 2.4
+// are not included here.
+type Timing struct {
+	QpuAccessTime              time.Duration // Total time in the QPU
+	QpuProgrammingTime         time.Duration // Time to program the QPU
+	QpuSamplingTime            time.Duration // Total time for R samples, where R is the number of reads/samples
+	QpuAnnealTimePerSample     time.Duration // Time for one anneal
+	QpuReadoutTimePerSample    time.Duration // Time for one read
+	QpuDelayTimePerSample      time.Duration // Rethermalization time between anneals
+	TotalPostprocessingTime    time.Duration // Total time spent in postprocessing, including energy calculations and histogramming
+	PostprocessingOverheadTime time.Duration // Part of the total postprocessing time that is not concurrent with the QPU
+}
+
 // An IsingResult represents a solver's output in Ising-model form.
 type IsingResult struct {
 	Solutions   [][]int8  // Solutions found (±1 or 3 for "unused")
 	Energies    []float64 // Energy of each solution
 	Occurrences []int     // Tally of occurrences of each solution
+	Timing      Timing    // Solver timing breakdown
 }
 
 // convertIsingResultToGo is a helper function for SolveIsing and SolveQubo
@@ -231,12 +246,29 @@ func convertIsingResultToGo(result *C.sapi_IsingResult) (IsingResult, error) {
 		occurs = cIntsToGo(result.num_occurrences, ns)
 	}
 
+	// Convert the timing data from C to Go.
+	toDur := func(us C.longlong) time.Duration {
+		return time.Duration(us) * time.Microsecond
+	}
+	cTime := result.timing
+	times := Timing{
+		QpuAccessTime:              toDur(cTime.qpu_access_time),
+		QpuProgrammingTime:         toDur(cTime.qpu_programming_time),
+		QpuSamplingTime:            toDur(cTime.qpu_sampling_time),
+		QpuAnnealTimePerSample:     toDur(cTime.qpu_anneal_time_per_sample),
+		QpuReadoutTimePerSample:    toDur(cTime.qpu_readout_time_per_sample),
+		QpuDelayTimePerSample:      toDur(cTime.qpu_delay_time_per_sample),
+		TotalPostprocessingTime:    toDur(cTime.total_post_processing_time),
+		PostprocessingOverheadTime: toDur(cTime.post_processing_overhead_time),
+	}
+
 	// Free the C data and return the Go result.
 	C.sapi_freeIsingResult(result)
 	ir := IsingResult{
 		Solutions:   solns,
 		Energies:    energies,
 		Occurrences: occurs,
+		Timing:      times,
 	}
 	return ir, nil
 }
