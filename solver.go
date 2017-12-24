@@ -152,8 +152,8 @@ func convertAOPs(p *C.sapi_SolverProperties) *AnnealOffsetProperties {
 	}
 }
 
-// GetProperties returns the properties associated with a SAPI solver.
-func (s *Solver) GetProperties() *SolverProperties {
+// Properties returns the properties associated with a SAPI solver.
+func (s *Solver) Properties() *SolverProperties {
 	// Acquire the solver's properties.
 	p := C.sapi_getSolverProperties(s.solver)
 

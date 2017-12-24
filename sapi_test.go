@@ -207,7 +207,7 @@ func couplersToAdj(cs [][2]int) map[int]map[int]bool {
 // (1, 2), (2, 3), and (3, 0).
 func findFourCycle(s *sapi.Solver) []int {
 	// Search every set of four neighbors until we find a square.
-	props := s.GetProperties()
+	props := s.Properties()
 	adj := couplersToAdj(props.QuantumProps.Couplers)
 	for _, q0 := range props.QuantumProps.Qubits {
 		for q1 := range adj[q0] {
@@ -375,7 +375,7 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prop := solver.GetProperties()
+	prop := solver.Properties()
 	ir := prop.IsingRanges
 	if ir == nil {
 		ir = &sapi.IsingRangeProperties{
