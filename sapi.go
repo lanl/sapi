@@ -63,7 +63,7 @@ func (e Error) Error() string {
 func newErrorf(c C.sapi_Code, format string, a ...interface{}) Error {
 	return Error{
 		N: Code(c),
-		S: fmt.Sprintf(format, a),
+		S: fmt.Sprintf(format, a...),
 	}
 }
 
