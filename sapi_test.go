@@ -398,6 +398,17 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 		t.Fatal(err)
 	}
 
+	// Construct a new problem from the embedded problem and the
+	// newly introduced chains.
+	const chStr = -2.0 // Chain strength
+	eProb := make(sapi.Problem, len(epr.Prob), len(epr.Prob)+len(epr.JC))
+	copy(eProb, epr.Prob)
+	for _, ch := range epr.JC {
+		pe := ch
+		pe.Value = chStr
+		eProb = append(eProb, pe)
+	}
+
 	// Set the solver's NumReads parameter to a large value.
 	sp := solver.NewSolverParameters()
 	switch sp := sp.(type) {
@@ -407,10 +418,11 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 		sp.NumReads = 1000
 	case *sapi.QuantumSolverParameters:
 		sp.NumReads = 1000
+		sp.AutoScale = true
 	}
 
 	// Solve the problem.
-	res, err := solver.SolveIsing(epr.Prob, sp)
+	res, err := solver.SolveIsing(eProb, sp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,8 +434,10 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 		t.Fatal(err)
 	}
 
-	// Validate the solutions.
-	const correctEnergy = -2.0
+	// Validate the solutions.  Because the energy of a correct solution
+	// depends on the embedding, we check all lowest-energy solutions and
+	// ignore all higher-energy solutions.
+	correctEnergy := res.Energies[0]
 	for i, soln := range solns {
 		a, b, y := (soln[0]+1)/2, (soln[1]+1)/2, (soln[2]+1)/2
 		e := res.Energies[i]
