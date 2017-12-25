@@ -27,7 +27,7 @@ The package documentation can be found online via [GoDoc](https://godoc.org/gith
 Limitations
 -----------
 
-The `sapi` package provides an *extremely* incomplete subset of SAPI.  Treat it more as a work in progress than a finished effort.  That said, if you find your favorite SAPI function missing from `sapi`, go ahead and submit a pull request or open an issue on GitHub.
+The `sapi` package provides a useful but incomplete subset of SAPI.  If you find your favorite SAPI function missing from `sapi`, go ahead and submit a pull request or open an issue on GitHub.
 
 License
 -------
