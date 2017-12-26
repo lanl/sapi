@@ -60,7 +60,7 @@ func TestChimeraAdjacency(t *testing.T) {
 // getRemoteParams extracts from the environment the parameters needed for a
 // remote connection.  If one of the URL, token, or solver name is not set, the
 // function skips the current test.
-func getRemoteParams(t *testing.T) (url, token, proxy, solver string) {
+func getRemoteParams(t *testing.T) (url, token string, proxy *string, solver string) {
 	// Define a helper function that indicates a variable is mandatory.
 	requireVar := func(k string) string {
 		nm := "DW_INTERNAL__" + k
@@ -74,7 +74,9 @@ func getRemoteParams(t *testing.T) (url, token, proxy, solver string) {
 	// Extract various variables from the environment and return them.
 	url = requireVar("HTTPLINK")
 	token = requireVar("TOKEN")
-	proxy = os.Getenv("DW_INTERNAL__HTTPPROXY")
+	if strp, found := os.LookupEnv("DW_INTERNAL__HTTPPROXY"); found {
+		proxy = &strp
+	}
 	solver = requireVar("SOLVER")
 	return
 }

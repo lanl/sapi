@@ -19,7 +19,7 @@ type Connection struct {
 	conn  *C.sapi_Connection // SAPI connection object
 	URL   string             // Connection name
 	Token string             // Token to authenticate a user
-	Proxy string             // Proxy URL
+	Proxy *string            // Proxy URL or nil for no proxy
 }
 
 // LocalConnection returns a connection to the set of local solvers (i.e.,
@@ -30,21 +30,26 @@ func LocalConnection() *Connection {
 		conn:  conn,
 		URL:   "",
 		Token: "",
-		Proxy: "",
+		Proxy: nil,
 	}
 }
 
 // RemoteConnection establishes a connection to a set of remote solvers (i.e.,
-// D-Wave hardware).
-func RemoteConnection(url, token, proxy string) (*Connection, error) {
+// D-Wave hardware).  If the proxy argument is nil, the system proxy is used;
+// if the argument is the empty string, no proxy is used; otherwise, the named
+// proxy is used.
+func RemoteConnection(url, token string, proxy *string) (*Connection, error) {
 	// Establish a connection.
 	var conn *C.sapi_Connection
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
 	cToken := C.CString(token)
 	defer C.free(unsafe.Pointer(cToken))
-	cProxy := C.CString(proxy)
-	defer C.free(unsafe.Pointer(cProxy))
+	var cProxy *C.char
+	if proxy != nil {
+		cProxy = C.CString(*proxy)
+		defer C.free(unsafe.Pointer(cProxy))
+	}
 	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
 	ret := C.sapi_remoteConnection(cURL, cToken, cProxy, &conn, &cErr[0])
 	if ret != C.SAPI_OK {
