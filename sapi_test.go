@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // localSolver represents the name of a local solver to connect to.
@@ -249,6 +250,7 @@ func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
 	}
 	q0, q1, q2, q3 := square[0], square[1], square[2], square[3]
 	s2b := map[int8]bool{-1: false, +1: true}
+	nSolns := 0
 	for i, soln := range ir.Solutions {
 		// Extract the AND inputs and output.
 		a := s2b[soln[q0]]
@@ -270,6 +272,10 @@ func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
 		if (a && b) != y {
 			t.Fatalf("Saw %v AND %v = %v in solution %d", a, b, y, i+1)
 		}
+		nSolns++
+	}
+	if nSolns == 0 {
+		t.Fatalf("Saw no valid solutions (and %d invalid ones)", len(ir.Solutions))
 	}
 }
 
@@ -352,6 +358,70 @@ func TestLocalSolveQubo(t *testing.T) {
 func TestRemoteSolveQubo(t *testing.T) {
 	_, solver := prepareRemote(t)
 	testAnd(t, false, solver, solver.SolveQubo)
+}
+
+// TestLocalAsyncSolveIsing ensures we can asynchronously solve an Ising-model
+// problem on a local solver.
+func TestLocalAsyncSolveIsing(t *testing.T) {
+	_, solver := prepareLocal(t)
+	run := func(prob sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		sub, err := solver.AsyncSolveIsing(prob, sp)
+		if err != nil {
+			return sapi.IsingResult{}, err
+		}
+		for !sub.AwaitCompletion(3 * time.Second) {
+		}
+		return sub.Result()
+	}
+	testAnd(t, true, solver, run)
+}
+
+// TestRemoteAsyncSolveIsing ensures we can asynchronously solve an Ising-model
+// problem on a remote solver.
+func TestRemoteAsyncSolveIsing(t *testing.T) {
+	_, solver := prepareRemote(t)
+	run := func(prob sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		sub, err := solver.AsyncSolveIsing(prob, sp)
+		if err != nil {
+			return sapi.IsingResult{}, err
+		}
+		for !sub.AwaitCompletion(3 * time.Second) {
+		}
+		return sub.Result()
+	}
+	testAnd(t, true, solver, run)
+}
+
+// TestLocalAsyncSolveQubo ensures we can asynchronously solve a QUBO problem
+// on a local solver.
+func TestLocalAsyncSolveQubo(t *testing.T) {
+	_, solver := prepareLocal(t)
+	run := func(prob sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		sub, err := solver.AsyncSolveQubo(prob, sp)
+		if err != nil {
+			return sapi.IsingResult{}, err
+		}
+		for !sub.AwaitCompletion(3 * time.Second) {
+		}
+		return sub.Result()
+	}
+	testAnd(t, true, solver, run)
+}
+
+// TestRemoteAsyncSolveQubo ensures we can asynchronously solve a QUBO problem
+// on a remote solver.
+func TestRemoteAsyncSolveQubo(t *testing.T) {
+	_, solver := prepareRemote(t)
+	run := func(prob sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		sub, err := solver.AsyncSolveQubo(prob, sp)
+		if err != nil {
+			return sapi.IsingResult{}, err
+		}
+		for !sub.AwaitCompletion(3 * time.Second) {
+		}
+		return sub.Result()
+	}
+	testAnd(t, true, solver, run)
 }
 
 // testEmbedding ensures we can embed an XOR problem in a solver's topology,
@@ -438,6 +508,7 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 	// depends on the embedding, we check all lowest-energy solutions and
 	// ignore all higher-energy solutions.
 	correctEnergy := res.Energies[0]
+	nSolns := 0
 	for i, soln := range solns {
 		a, b, y := (soln[0]+1)/2, (soln[1]+1)/2, (soln[2]+1)/2
 		e := res.Energies[i]
@@ -449,6 +520,10 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 		if (a ^ b) != y {
 			t.Fatalf("Saw %v XOR %v = %v in solution %d (energy = %f)", a == 1, b == 1, y == 1, i+1, e)
 		}
+		nSolns++
+	}
+	if nSolns == 0 {
+		t.Fatalf("Saw no valid solutions (and %d invalid ones)", len(solns))
 	}
 }
 
