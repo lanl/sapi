@@ -37,8 +37,10 @@ func ExampleRemoteConnection() {
 	_ = conn
 }
 
+var solver *sapi.Solver // Current solver
+
 // Specify solver-specific parameters.
-func ExampleSolverParameters(solver *sapi.Solver) {
+func ExampleSolverParameters() {
 	// Set the number of reads to 1000.  In the case of
 	// sapi.QuantumSolverParameters, also enable autoscaling.  Note that
 	// sapi.SwHeuristicSolverParameters doesn't accept either of those
