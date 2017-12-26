@@ -98,7 +98,7 @@ func TestRemoteConnection(t *testing.T) {
 // TestLocalSolversExist ensures we have at least one local solver.
 func TestLocalSolversExist(t *testing.T) {
 	conn := sapi.LocalConnection()
-	_, err := conn.GetSolver(localSolverName)
+	_, err := conn.Solver(localSolverName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestRemoteSolversExist(t *testing.T) {
 // solver.
 func prepareLocal(t *testing.T) (*sapi.Connection, *sapi.Solver) {
 	conn := sapi.LocalConnection()
-	solver, err := conn.GetSolver(localSolverName)
+	solver, err := conn.Solver(localSolverName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func prepareRemote(t *testing.T) (*sapi.Connection, *sapi.Solver) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	solver, err := conn.GetSolver(solverName)
+	solver, err := conn.Solver(solverName)
 	if err != nil {
 		t.Fatal(err)
 	}

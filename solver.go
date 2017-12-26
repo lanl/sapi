@@ -23,8 +23,8 @@ type Solver struct {
 	Conn   *Connection    // Connection with which this solver is associated
 }
 
-// GetSolver returns a solver associated with a given connection.
-func (c *Connection) GetSolver(name string) (*Solver, error) {
+// Solver returns a solver associated with a given connection.
+func (c *Connection) Solver(name string) (*Solver, error) {
 	// Access a solver by name.
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
