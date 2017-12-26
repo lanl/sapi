@@ -299,7 +299,7 @@ func (s *Solver) SolveQubo(p Problem, sp SolverParameters) (IsingResult, error) 
 
 // A SubmittedProblem represents a problem submitted asynchronously to a solver.
 type SubmittedProblem struct {
-	sp *C.sapi_SubmittedProblem
+	cSp *C.sapi_SubmittedProblem
 }
 
 // AsyncSolveIsing submits an Ising-model problem to a solver but does not wait
@@ -313,11 +313,11 @@ func (s *Solver) AsyncSolveIsing(p Problem, sp SolverParameters) (*SubmittedProb
 	if ret := C.sapi_asyncSolveIsing(s.solver, prob, params, &cSub, &cErr[0]); ret != C.SAPI_OK {
 		return nil, newErrorf(ret, "%s", C.GoString(&cErr[0]))
 	}
-	sub := &SubmittedProblem{sp: cSub}
+	sub := &SubmittedProblem{cSp: cSub}
 
 	// Free the problem when it gets GC'd away.
 	runtime.SetFinalizer(sub, func(sub *SubmittedProblem) {
-		C.sapi_freeSubmittedProblem(sub.sp)
+		C.sapi_freeSubmittedProblem(sub.cSp)
 	})
 	return sub, nil
 }
@@ -333,11 +333,11 @@ func (s *Solver) AsyncSolveQubo(p Problem, sp SolverParameters) (*SubmittedProbl
 	if ret := C.sapi_asyncSolveQubo(s.solver, prob, params, &cSub, &cErr[0]); ret != C.SAPI_OK {
 		return nil, newErrorf(ret, "%s", C.GoString(&cErr[0]))
 	}
-	sub := &SubmittedProblem{sp: cSub}
+	sub := &SubmittedProblem{cSp: cSub}
 
 	// Free the problem when it gets GC'd away.
 	runtime.SetFinalizer(sub, func(sub *SubmittedProblem) {
-		C.sapi_freeSubmittedProblem(sub.sp)
+		C.sapi_freeSubmittedProblem(sub.cSp)
 	})
 	return sub, nil
 }
@@ -382,7 +382,7 @@ type ProblemStatus struct {
 // Status returns the current status of an asynchronously submitted problem.
 func (sp *SubmittedProblem) Status() (*ProblemStatus, error) {
 	// Query the status.
-	cSp := sp.sp
+	cSp := sp.cSp
 	var cPs C.sapi_ProblemStatus
 	if ret := C.sapi_asyncStatus(cSp, &cPs); ret != C.SAPI_OK {
 		return nil, newErrorf(ret, "sapi_asyncStatus failed")
@@ -409,26 +409,54 @@ func (sp *SubmittedProblem) Status() (*ProblemStatus, error) {
 	return &ps, nil
 }
 
-// Done says whether a submitted problem has completed.
+// Done says whether an asynchronously submitted problem has completed.
 func (sp *SubmittedProblem) Done() bool {
-	return C.sapi_asyncDone(sp.sp) != 0
+	return C.sapi_asyncDone(sp.cSp) != 0
 }
 
-// Cancel cancels a submitted problem.
+// Cancel cancels an asynchronously submitted problem.
 func (sp *SubmittedProblem) Cancel() {
-	C.sapi_cancelSubmittedProblem(sp.sp)
+	C.sapi_cancelSubmittedProblem(sp.cSp)
 }
 
-// Retry retries a submitted problem that encountered a network, communication,
-// or authentication error.
+// Retry retries an asynchronously submitted problem that encountered a
+// network, communication, or authentication error.
 func (sp *SubmittedProblem) Retry() {
-	C.sapi_asyncRetry(sp.sp)
+	C.sapi_asyncRetry(sp.cSp)
 }
 
-// AwaitCompletion waits for a submitted problem to complete.  It returns true
-// if the problem completed, false if the specified timeout was reached.
+// AwaitCompletion waits for an asynchronously submitted problem to complete.
+// It returns true if the problem completed, false if the specified timeout was
+// reached.
 func (sp *SubmittedProblem) AwaitCompletion(timeout time.Duration) bool {
 	cTime := C.double(timeout.Seconds())
-	ret := C.sapi_awaitCompletion(&sp.sp, 1, 1, cTime)
+	ret := C.sapi_awaitCompletion(&sp.cSp, 1, 1, cTime)
 	return ret != 0
+}
+
+// AwaitCompletion waits for multiple asynchronously submitted problems to
+// complete.  It returns true if a minimum number of problems completed, false
+// if the specified timeout was reached first.  For a single submitted problem,
+// SubmittedProblem.AwaitCompletion may be more convenient.
+func AwaitCompletion(sps []*SubmittedProblem, minDone int, timeout time.Duration) bool {
+	// Create a list of C sapi_SubmittedProblem pointers.
+	cSps := make([]*C.sapi_SubmittedProblem, len(sps))
+	for i, s := range sps {
+		cSps[i] = s.cSp
+	}
+
+	// Invoke the C function.
+	cTime := C.double(timeout.Seconds())
+	ret := C.sapi_awaitCompletion(&cSps[0], C.size_t(len(sps)), C.size_t(minDone), cTime)
+	return ret != 0
+}
+
+// Result returns the result of asynchronously submitted problem.
+func (sp *SubmittedProblem) Result() (IsingResult, error) {
+	cErr := make([]C.char, C.SAPI_ERROR_MESSAGE_MAX_SIZE)
+	var result *C.sapi_IsingResult
+	if ret := C.sapi_asyncResult(sp.cSp, &result, &cErr[0]); ret != C.SAPI_OK {
+		return IsingResult{}, newErrorf(ret, "%s", C.GoString(&cErr[0]))
+	}
+	return convertIsingResultToGo(result)
 }
