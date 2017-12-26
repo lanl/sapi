@@ -6,6 +6,15 @@ import (
 	"fmt"
 	"github.com/lanl/sapi"
 	"os"
+	"time"
+)
+
+// Declare global variables to convey that these would be initialized
+// outside of the code excerpts that comprise our examples.
+var (
+	solver *sapi.Solver
+	prob   sapi.Problem
+	sp     sapi.SolverParameters
 )
 
 // Connect to a remote solver by reading connection parameters from environment
@@ -37,8 +46,6 @@ func ExampleRemoteConnection() {
 	_ = conn
 }
 
-var solver *sapi.Solver // Current solver
-
 // Specify solver-specific parameters.
 func ExampleSolverParameters() {
 	// Set the number of reads to 1000.  In the case of
@@ -59,6 +66,24 @@ func ExampleSolverParameters() {
 	// Code to pass sp to one of the Solve* calls would normally appear
 	// here.
 	_ = sp
+}
+
+// Submit a problem asynchronously and wait for it to complete.
+func ExampleAsyncSolveIsing() {
+	// Asynchronously solve problem prob with solver parameters sp.
+	sub, err := solver.AsyncSolveIsing(prob, sp)
+	if err != nil {
+		panic(err)
+	}
+	for !sub.AwaitCompletion(2 * time.Second) {
+	}
+	ir, err := sub.Result()
+	if err != nil {
+		panic(err)
+	}
+
+	// Code to do something with ir would normally appear here.
+	_ = ir
 }
 
 // Solve a maximally frustrated problem on a local solver.
