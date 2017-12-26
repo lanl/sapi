@@ -69,7 +69,7 @@ func ExampleSolverParameters() {
 }
 
 // Submit a problem asynchronously and wait for it to complete.
-func ExampleAsyncSolveIsing() {
+func ExampleSolver_AsyncSolveIsing() {
 	// Asynchronously solve problem prob with solver parameters sp.
 	sub, err := solver.AsyncSolveIsing(prob, sp)
 	if err != nil {
