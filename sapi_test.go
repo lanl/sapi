@@ -251,7 +251,7 @@ func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
 		correctEnergy = 0.0
 	}
 	q0, q1, q2, q3 := square[0], square[1], square[2], square[3]
-	s2b := map[int8]bool{-1: false, +1: true}
+	s2b := map[int8]bool{-1: false, 0: false, +1: true}
 	nSolns := 0
 	for i, soln := range ir.Solutions {
 		// Extract the AND inputs and output.
@@ -541,4 +541,38 @@ func TestLocalEmbedding(t *testing.T) {
 func TestRemoteEmbedding(t *testing.T) {
 	_, solver := prepareRemote(t)
 	testEmbedding(t, solver)
+}
+
+// TestFixVariables ensures that FixVariables can detect that a problem
+// variable is unnecessary.
+func TestFixVariables(t *testing.T) {
+	// Construct a QUBO problem.
+	prob := make(sapi.Problem, 8)
+	prob[0] = sapi.ProblemEntry{I: 1, J: 1, Value: 1}
+	prob[1] = sapi.ProblemEntry{I: 2, J: 2, Value: 1}
+	prob[2] = sapi.ProblemEntry{I: 3, J: 3, Value: 1}
+	prob[3] = sapi.ProblemEntry{I: 4, J: 4, Value: 3}
+	prob[4] = sapi.ProblemEntry{I: 1, J: 2, Value: 1}
+	prob[5] = sapi.ProblemEntry{I: 1, J: 3, Value: -2}
+	prob[6] = sapi.ProblemEntry{I: 2, J: 3, Value: -2}
+	prob[7] = sapi.ProblemEntry{I: 1, J: 4, Value: 4}
+
+	// Find fixed variables.
+	fvr, err := prob.FixVariables(sapi.FixVariablesMethodOptimized)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the result.
+	v, ok := fvr.FixedVars[4]
+	if !ok {
+		t.Fatal("Expected to see variable 4 fixed, but it wasn't")
+	}
+	if v != 0 {
+		t.Fatalf("Expected to see variable 4 fixed to 0, but it was fixed to %d", v)
+	}
+	delete(fvr.FixedVars, 4)
+	for k, v := range fvr.FixedVars {
+		t.Fatalf("Did not expect variable %d to be fixed to %d", k, v)
+	}
 }
