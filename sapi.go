@@ -1,9 +1,9 @@
 /*
 Package sapi provides a Go interface to D-Wave's SAPI library.
 
-The package provides a useful but incomplete set of SAPI types and
-functions.  The intention is to add more functionality as the need
-arises.
+The package provides a large subset of SAPI types and functions.  Only
+the types and functions related to reducing order interaction and to
+the QSage black-box solver are current missing.
 */
 package sapi
 

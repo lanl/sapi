@@ -24,11 +24,6 @@ Documentation
 
 The package documentation can be found online via [GoDoc](https://godoc.org/github.com/lanl/sapi).  The main source of documentation for SAPI in general is D-Wave's *Developer Guide for Python* (or C or MATLAB).
 
-Limitations
------------
-
-The `sapi` package provides a useful but incomplete subset of SAPI.  If you find your favorite SAPI function missing from `sapi`, go ahead and submit a pull request or open an issue on GitHub.
-
 License
 -------
 
