@@ -23,40 +23,6 @@ func TestVersion(t *testing.T) {
 	t.Logf("Testing against SAPI version %s", v)
 }
 
-// TestChimeraAdjacency tests that we can generate an adjacency list for a
-// Chimera.
-func TestChimeraAdjacency(t *testing.T) {
-	// Generate an adjacency list.
-	const (
-		M = 3 // Vertical
-		N = 4 // Horizontal
-		L = 5 // Intra-cell
-	)
-	adj, err := sapi.ChimeraAdjacency(M, N, L)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Remove one of each pair of symmetric connections.
-	oldAdj := adj
-	adj = make(sapi.Problem, 0, len(oldAdj)/2)
-	for _, a := range oldAdj {
-		if a.I < a.J {
-			adj = append(adj, a)
-		}
-	}
-
-	// Rather than check every connection we merely ensure that the list
-	// contains the correct number of connections.
-	expected := M*N*L*L + // Intra-cell
-		L*(M-1)*N + // Up and down inter-cell
-		L*M*(N-1) // Left and right inter-cell
-	if len(adj) != expected {
-		t.Logf("Chimera {%d, %d, %d} connections returned: %v", M, N, L, adj)
-		t.Fatalf("Expected %d connections but saw %d", expected, len(adj))
-	}
-}
-
 // getRemoteParams extracts from the environment the parameters needed for a
 // remote connection.  If one of the URL, token, or solver name is not set, the
 // function skips the current test.
@@ -145,18 +111,6 @@ func TestLocalSolver(t *testing.T) {
 	prepareLocal(t)
 }
 
-// TestLocalHardwareAdjacency ensures we can query a local solver's topology.
-func TestLocalHardwareAdjacency(t *testing.T) {
-	_, solver := prepareLocal(t)
-	adj, err := solver.HardwareAdjacency()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(adj) == 0 {
-		t.Fatalf("Received an empty adjacency graph for solver %s", localSolverName)
-	}
-}
-
 // prepareRemote is a helper function that initializes a remote connection and
 // solver.
 func prepareRemote(t *testing.T) (*sapi.Connection, *sapi.Solver) {
@@ -175,6 +129,65 @@ func prepareRemote(t *testing.T) (*sapi.Connection, *sapi.Solver) {
 // TestRemoteSolver ensures we can connect to a remote solver.
 func TestRemoteSolver(t *testing.T) {
 	prepareRemote(t)
+}
+
+// TestNewSolver ensures we can connect to either a remote or local solver,
+// based on whatever dw environment variables are set.
+func TestNewSolver(t *testing.T) {
+	_, err := sapi.NewSolver()
+	if err != nil {
+		if os.Getenv("DW_INTERNAL__SOLVER") == "" {
+			t.Skipf("Environment variable DW_INTERNAL__SOLVER is not set")
+			return
+		}
+		t.Fatal(err)
+	}
+}
+
+// TestChimeraAdjacency tests that we can generate an adjacency list for a
+// Chimera.
+func TestChimeraAdjacency(t *testing.T) {
+	// Generate an adjacency list.
+	const (
+		M = 3 // Vertical
+		N = 4 // Horizontal
+		L = 5 // Intra-cell
+	)
+	adj, err := sapi.ChimeraAdjacency(M, N, L)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove one of each pair of symmetric connections.
+	oldAdj := adj
+	adj = make(sapi.Problem, 0, len(oldAdj)/2)
+	for _, a := range oldAdj {
+		if a.I < a.J {
+			adj = append(adj, a)
+		}
+	}
+
+	// Rather than check every connection we merely ensure that the list
+	// contains the correct number of connections.
+	expected := M*N*L*L + // Intra-cell
+		L*(M-1)*N + // Up and down inter-cell
+		L*M*(N-1) // Left and right inter-cell
+	if len(adj) != expected {
+		t.Logf("Chimera {%d, %d, %d} connections returned: %v", M, N, L, adj)
+		t.Fatalf("Expected %d connections but saw %d", expected, len(adj))
+	}
+}
+
+// TestLocalHardwareAdjacency ensures we can query a local solver's topology.
+func TestLocalHardwareAdjacency(t *testing.T) {
+	_, solver := prepareLocal(t)
+	adj, err := solver.HardwareAdjacency()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(adj) == 0 {
+		t.Fatalf("Received an empty adjacency graph for solver %s", localSolverName)
+	}
 }
 
 // TestRemoteHardwareAdjacency ensures we can query a remote solver's topology.

@@ -19,7 +19,8 @@ var (
 
 // Connect to a remote solver by reading connection parameters from environment
 // variables (using the dw tool's naming conventions).  If either the URL or
-// token is not specified, establish a local connection instead.
+// token is not specified, establish a local connection instead.  This is
+// essentially the operation of the NewSolver convenience function.
 func ExampleRemoteConnection() {
 	// Query the environment for the connection parameters.
 	url := os.Getenv("DW_INTERNAL__HTTPLINK")
