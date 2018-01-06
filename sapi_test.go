@@ -279,13 +279,16 @@ func verifyAnd(t *testing.T, ising bool, square []int, ir sapi.IsingResult) {
 				ir.Energies[i], a, aAlt, b, y)
 			continue
 		}
+		t.Logf("Considering solution %v=%v AND %v = %v (energy = %.2f)",
+			a, aAlt, b, y, ir.Energies[i])
 
 		// Ensure the solutions that should be valid are indeed so.
 		if a != aAlt {
 			t.Fatalf("Expected qubits %d and %d to be equal in solution %d", q0, q1, i+1)
 		}
 		if (a && b) != y {
-			t.Fatalf("Saw %v AND %v = %v in solution %d", a, b, y, i+1)
+			t.Fatalf("Saw %v AND %v = %v in solution %d (energy = %.2f)",
+				a, b, y, i+1, ir.Energies[i])
 		}
 		nSolns++
 	}
@@ -532,6 +535,8 @@ func testEmbedding(t *testing.T, solver *sapi.Solver) {
 				e, a == 1, b == 1, y == 1)
 			continue
 		}
+		t.Logf("Considering solution %v XOR %v = %v (energy = %.2f)",
+			a == 1, b == 1, y == 1, e)
 		if (a ^ b) != y {
 			t.Fatalf("Saw %v XOR %v = %v in solution %d (energy = %f)", a == 1, b == 1, y == 1, i+1, e)
 		}
@@ -588,4 +593,108 @@ func TestFixVariables(t *testing.T) {
 	for k, v := range fvr.FixedVars {
 		t.Fatalf("Did not expect variable %d to be fixed to %d", k, v)
 	}
+}
+
+// TestCanonicalize tests that we can correctly canonicalize a Problem.
+func TestCanonicalize(t *testing.T) {
+	// Canonicalize a dummy problem.
+	orig := sapi.Problem{
+		sapi.ProblemEntry{I: 3, J: 2, Value: 1},
+		sapi.ProblemEntry{I: 5, J: 5, Value: 2},
+		sapi.ProblemEntry{I: 2, J: 3, Value: 3},
+		sapi.ProblemEntry{I: 5, J: 5, Value: 4},
+		sapi.ProblemEntry{I: 3, J: 5, Value: 5},
+		sapi.ProblemEntry{I: 2, J: 3, Value: 6},
+		sapi.ProblemEntry{I: 4, J: 1, Value: 7},
+		sapi.ProblemEntry{I: 6, J: 6, Value: 8},
+	}
+	expected := sapi.Problem{
+		sapi.ProblemEntry{I: 1, J: 4, Value: 7},
+		sapi.ProblemEntry{I: 2, J: 3, Value: 10},
+		sapi.ProblemEntry{I: 3, J: 5, Value: 5},
+		sapi.ProblemEntry{I: 5, J: 5, Value: 6},
+		sapi.ProblemEntry{I: 6, J: 6, Value: 8},
+	}
+	canon := orig.Canonicalize()
+
+	// Ensure we received what we expected.
+	if len(canon) != len(expected) {
+		t.Fatalf("Expected %v but saw %v", expected, canon)
+	}
+	for i, pe := range canon {
+		if pe != expected[i] {
+			t.Fatalf("Expected %v but saw %v", expected, canon)
+		}
+	}
+}
+
+// TestIsingQubo converts an Ising problem to QUBO and back.
+func TestIsingQubo(t *testing.T) {
+	// Convert from Ising to QUBO and back.
+	i1 := sapi.Problem{
+		sapi.ProblemEntry{I: 0, J: 0, Value: 1},
+		sapi.ProblemEntry{I: 1, J: 1, Value: 1},
+		sapi.ProblemEntry{I: 0, J: 1, Value: -1},
+	}
+	q1, q1ofs := i1.ToQubo()
+	i2, i2ofs := q1.ToIsing()
+
+	// Confirm that the final Ising problem matches the original Ising
+	// problem.
+	i1 = i1.Canonicalize()
+	i2 = i2.Canonicalize()
+	if len(i1) != len(i2) {
+		t.Fatalf("Ising mismatch: %v vs. %v", i1, i2)
+	}
+	for k := range i1 {
+		if i1[k] != i2[k] {
+			t.Fatalf("Ising element mismatch: %v vs. %v", i1[k], i2[k])
+		}
+	}
+	if q1ofs != -3.0 {
+		t.Fatalf("Expected QUBO offset of -3 but saw %v", q1ofs)
+	}
+	if i2ofs != 3.0 {
+		t.Fatalf("Expected Ising offset of 3 but saw %v", i2ofs)
+	}
+}
+
+// TestToIsing converts a QUBO problem to an Ising problem and solves it on a
+// local solver.
+func TestToIsing(t *testing.T) {
+	_, solver := prepareLocal(t)
+
+	solveQubo := func(p sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		ip, ofs := p.ToIsing()
+		ir, err := solver.SolveIsing(ip, sp)
+		if err != nil {
+			return ir, err
+		}
+		for i, e := range ir.Energies {
+			ir.Energies[i] = e + ofs
+		}
+		return ir, nil
+	}
+	testAnd(t, false, solver, solveQubo)
+}
+
+// TestToQubo converts an Ising problem to a QUBO problem and solves it on a
+// local solver.
+func TestToQubo(t *testing.T) {
+	_, solver := prepareLocal(t)
+
+	solveIsing := func(p sapi.Problem, sp sapi.SolverParameters) (sapi.IsingResult, error) {
+		qp, ofs := p.ToQubo()
+		t.Logf("ISING = %v", p.Canonicalize()) // Temporary
+		t.Logf("QUBO = %v", qp.Canonicalize()) // Temporary
+		ir, err := solver.SolveQubo(qp, sp)
+		if err != nil {
+			return ir, err
+		}
+		for i, e := range ir.Energies {
+			ir.Energies[i] = e + ofs
+		}
+		return ir, nil
+	}
+	testAnd(t, true, solver, solveIsing)
 }
