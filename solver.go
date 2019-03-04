@@ -183,7 +183,7 @@ func (s *Solver) Properties() *SolverProperties {
 
 	// Create and initialize a Go solvers properties object and return it.
 	propObj := &SolverProperties{
-		props: p,
+		props:                 p,
 		SupportedProblemTypes: spts,
 		IsingRanges:           ranges,
 		QuantumProps:          convertQSPs(p),
